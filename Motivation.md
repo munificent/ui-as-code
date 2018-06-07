@@ -499,16 +499,16 @@ advantage of horizontal space and are outside of the sweet spot for readability.
 
 In a corpus of code formatted not using Flutter's one-argument-per-line rule,
 the average line was 29.37 characters and the median was 28. In Flutter example
-code outside of `build()` methods, it's an average of 28.97 and a median of 25.
-Inside `build()` methods, it's an average of 20.49 and median of 17. Even if we ignore the lines that only contain a `)` in the `build()` methods, the average is still 25.09 and the median 21. &dagger;
+code outside of `build()` methods, it's an average of 29.08 and a median of 25.
+Inside `build()` methods, it's an average of 21.05 and median of 17. Even if we ignore the lines that only contain a `)` in the `build()` methods, the average is still 25.69 and the median 21. &dagger;
 
 ```
                                        total  average  median
-flutter/example/ build()                6089    20.49      17
-flutter/example/ non-build()           14429    28.97      25
-dart/sdk/pkg/                         924293    29.37      28
-flutter/example/ build() w/o ")"        4882    25.09      21
-flutter/example/ non-build() w/o ")"   13464    30.91      27
+flutter/example/ build()                6705    21.05      17
+flutter/example/ non-build()           13813    29.08      25
+dart/sdk/pkg/                         924678    29.37      28
+flutter/example/ build() w/o ")"        5397    25.69      21
+flutter/example/ non-build() w/o ")"   12949    30.90      27
 ```
 
 If we assume the non-`build()` code is typical and users are happy with that, it
