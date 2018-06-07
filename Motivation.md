@@ -236,8 +236,9 @@ possibly scrolled offscreen. It's hard to tell which expression a `)`, `]`, or
 `CupertinoPageScaffold()`, how long does it take you to figure out where to
 insert it?
 
-The VS Code and IntelliJ plug-ins for Dart helps by drawing little pseudo-comments at the end
-of the lines to tell you which expression each `)` belongs to:
+The VS Code and IntelliJ plug-ins for Dart help by drawing little
+pseudo-comments at the end of the lines to tell you which expression each `)`
+belongs to:
 
 ```dart
 ...
@@ -260,7 +261,7 @@ of the lines to tell you which expression each `)` belongs to:
 ) // CupertinoTabScaffold
 ```
 
-This is great for people reading code inside VS Code or IntelliJ, but doesn't help people
+This is great for people reading code inside those IDEs, but doesn't help people
 using other editors, doing code reviews, or reading code on GitHub.
 
 ## Extra nesting and boilerplate for child widgets
