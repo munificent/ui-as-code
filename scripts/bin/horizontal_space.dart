@@ -11,6 +11,12 @@ import 'dart:math' as math;
 final buildHist = new Histogram();
 final otherHist = new Histogram();
 
+/// Detects functions that build widgets. Best effort only. Does not capture all functions.
+final RegExp buildFunctionSignature = new RegExp(r"Widget _?\w+\(BuildContext.*\) \{");
+
+/// The number of functions we detected using [buildFunctionSignature].
+int buildFunctionCount = 0;
+
 bool ignoreParenLines;
 
 void main(List<String> arguments) {
@@ -27,16 +33,17 @@ void main(List<String> arguments) {
   var otherTotal = otherHist.totalCount;
   for (var i = 1; i < 100; i++) {
     var buildPercent = (100 * buildHist.count(i) / buildTotal).toStringAsFixed(2).padLeft(5);
-    var b = (200 * buildHist.count(i) / buildTotal).toInt();
+    var b = 200 * buildHist.count(i) ~/ buildTotal;
     var bar = "*" * b + " " * (50 - b);
 
-    var o = (200 * otherHist.count(i) / otherTotal).toInt();
+    var o = 200 * otherHist.count(i) ~/ otherTotal;
     var other = "*" * o + " " * (50 - o);
 
     var otherPercent = (100 * otherHist.count(i) / otherTotal).toStringAsFixed(2).padLeft(5);
     print("${i.toString().padLeft(2)}: ${buildPercent}% $bar ${otherPercent}% $other");
   }
 
+  print("detected ${buildFunctionCount} widget building functions");
   print("build total = $buildTotal, average = ${buildHist.sum / buildTotal}, median = ${buildHist.median}");
   print("other total = $otherTotal, average = ${otherHist.sum / otherTotal}, median = ${otherHist.median}");
 }
@@ -58,7 +65,8 @@ void measureFile(File file) {
       if (trimmed == ")") continue;
     }
 
-    if (trimmed == "Widget build(BuildContext context) {") {
+    if (trimmed.contains(buildFunctionSignature)) {
+      buildFunctionCount++;
       nesting = 1;
     }
 
