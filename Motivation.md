@@ -73,9 +73,13 @@ omitting the argument entirely, so you can't do something like:
 padding: isWindows ? null : const EdgeInsets.all(20.0),
 ```
 
-Even in cases where that *does* work, there's only so much code one can
-reasonably jam into a conditional expression. To conditionally omit that
-parameter, you end up rearranging your program significantly:
+Treating a `null` as distinct from not passing it at all isn't great API design,
+but it does happen. Even in cases where you can pass `null` to indicate the
+absence of a parameter, there's only so much code one can reasonably jam into a
+`? <stuff...> : null` conditional expression.
+
+Instead, to conditionally omit a parameter, you end up rearranging your program
+significantly:
 
 ```dart
 Widget build(BuildContext context) {
@@ -433,7 +437,7 @@ or child widets.
 ## Inefficient use of horizontal space
 
 In order to mitigate the previous problem, most idiomatic Flutter code puts each
-argument is one its own line, a trailing comma after the last argument, and the
+argument is on its own line, a trailing comma after the last argument, and the
 closing delimiter on the next line. (In some cases, the argument list does not
 get a trailing comma and is all on one line. It's not clear what the rules for
 when to do this are.)
