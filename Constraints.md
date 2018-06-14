@@ -1,4 +1,4 @@
-# Goals
+# Constraints
 
 The main measure of this feature's fitness is how well it solves our [user
 problems][problems]. Those are the primary requirements. Still, it's possible to
@@ -6,8 +6,8 @@ design a feature that checks those boxes but isn't a good feature.
 
 [problems]: https://github.com/munificent/ui-as-code/blob/master/Motivation.md
 
-This doc defines a set of goals to constraint what good feature looks like in
-the larger context of the language and ecosystem. These aren't hard
+This doc defines some guiding principles to constrain what a good feature looks
+like in the larger context of the language and ecosystem. These aren't hard
 requirements, more like trade-offs. We won't maximize all of these, but we
 should know when we aren't and why.
 
