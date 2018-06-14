@@ -177,6 +177,55 @@ code motion. If the condition later goes away, will the maintainer remove all of
 the now-unneeded imperative code and collapse it back to its earlier declarative
 form, or just leave it unnecessarily bottom-up?
 
+## Conditional intercession
+
+A more complex form of the previous problem is code that wants to conditionally
+omit one level of a widget tree while maintaining the subtree. Say you have:
+
+```dart
+Widget build(BuildContext context) {
+  return Container(
+    color: Colors.red,
+    child: DecoratedBox(
+      color: Colors.green,
+      child: Container(
+        color: Colors.blue,
+      ),
+    ),
+  );
+}
+```
+
+Then you realize that on Wednesdays, you want to omit the green DecoratedBox but
+*not* the inner blue Container. That requires convolutions like:
+
+```dart
+Widget build(BuildContext context) {
+  // Note: can't use "var" here :-(
+  Widget result = Container(
+    color: Colors.blue,
+  );
+
+  if (!isWednesday) {
+    result = DecoratedBox(
+      color: Colors.green,
+      child: result,
+    );
+  }
+
+  result = Container(
+    color: Colors.red,
+    child: result,
+  );
+
+  return result;
+}
+```
+
+Sometimes you can use helper functions to straighten some of this
+out&mdash;which is one of the nice things about defining your UI in normal Dart
+code&mdash;but the resulting code is often non-obvious and harder to maintain.
+
 ## Long strings of hard-to-read closing delimiters
 
 This is one of the first things most [Flutter users notice][tweet] that's a
