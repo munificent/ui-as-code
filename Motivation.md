@@ -320,7 +320,6 @@ a series of children. In that case, those children are typically passed by
 wrapping them in a list literal:
 
 ```dart
-@override
 Widget build(BuildContext context) {
   return Scaffold(
     body: Container(
@@ -399,23 +398,25 @@ line. If you don't, it tries to pack them more compactly. Each is the right
 choice in some cases:
 
 ```dart
-Padding(
-  padding: const EdgeInsets.only(top: 24.0),
-  child: RichText(
-    text: TextSpan(
-      children: [
-        TextSpan(
-          style: aboutTextStyle,
-          text: 'Flutter ...',
-        ),
-        TextSpan(
-          style: aboutTextStyle,
-          text: '.',
-        ),
-      ],
+Widget build(BuildContext context) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 24.0),
+    child: RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            style: aboutTextStyle,
+            text: 'Flutter ...',
+          ),
+          TextSpan(
+            style: aboutTextStyle,
+            text: '.',
+          ),
+        ],
+      ),
     ),
-  ),
-)
+  );
+}
 ```
 
 Most of the argument lists have trailing commas here, but note that
@@ -458,25 +459,27 @@ remember to strip the comma off the end of the line and replace it with a
 semicolon:
 
 ```dart
-var header = TextSpan(
-  style: aboutTextStyle,
-  text: 'Flutter ...',
-), // <-- Oops! Must be ";" now.
+Widget build(BuildContext context) {
+  var header = TextSpan(
+    style: aboutTextStyle,
+    text: 'Flutter ...',
+  ), // <-- Oops! Must be ";" now.
 
-Padding(
-  padding: const EdgeInsets.only(top: 24.0),
-  child: RichText(
-    text: TextSpan(
-      header,
-      children: [
-        TextSpan(
-          style: aboutTextStyle,
-          text: '.',
-        ),
-      ],
+  Padding(
+    padding: const EdgeInsets.only(top: 24.0),
+    child: RichText(
+      text: TextSpan(
+        header,
+        children: [
+          TextSpan(
+            style: aboutTextStyle,
+            text: '.',
+          ),
+        ],
+      ),
     ),
-  ),
-)
+  )
+}
 ```
 
 Cutting the whole line isn't sufficient. This exacerbates the pain caused by the
@@ -499,44 +502,44 @@ still be easy to read if it were.
 Most would probably prefer this:
 
 ```dart
-  Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      child: Center(
-        child: Column(
-          children: [
-            Icon(choice.icon, size: 128.0, color: textStyle.color),
-            Text(choice.title, style: textStyle),
-          ],
-        ),
+Widget build(BuildContext context) {
+  return Card(
+    color: Colors.white,
+    child: Center(
+      child: Column(
+        children: [
+          Icon(choice.icon, size: 128.0, color: textStyle.color),
+          Text(choice.title, style: textStyle),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 ```
 
 Over:
 
 ```dart
-  Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      child: Center(
-        child: Column(
-          children: [
-            Icon(
-              choice.icon,
-              size: 128.0,
-              color: textStyle.color,
-            ),
-            Text(
-              choice.title,
-              style: textStyle,
-            ),
-          ],
-        ),
+Widget build(BuildContext context) {
+  return Card(
+    color: Colors.white,
+    child: Center(
+      child: Column(
+        children: [
+          Icon(
+            choice.icon,
+            size: 128.0,
+            color: textStyle.color,
+          ),
+          Text(
+            choice.title,
+            style: textStyle,
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 ```
 
 Packing the arguments onto a single line fits more code onto the users screen
