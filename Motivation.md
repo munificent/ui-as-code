@@ -597,6 +597,44 @@ makes the most sense for that domain. In general, the language syntax, API
 design, and formatting tools should work harmoniously together to free users
 from having to worry about whitespace.
 
+## Redundancy in arguments of enum types
+
+In Flutter, almost all parameters are named parameters. Most are optional and
+this lets users freely choose which to provide and which to omit. In UI code,
+arguments are often raw values like numbers, strings, and colors. Using the name
+at the callsite makes it clearer what those arguments are for.
+
+But when the argument value is an enum type, this often leads to callsites that
+say the same (or similar) name twice:
+
+```
+new TableRow(
+  children: [
+    TableCell(
+      verticalAlignment: TableCellVerticalAlignment.middle,
+      child: Image.asset(
+        recipe.ingredientsImagePath,
+        package: recipe.ingredientsImagePackage,
+        width: 32.0,
+        height: 32.0,
+        alignment: Alignment.centerLeft,
+        fit: BoxFit.scaleDown
+      )
+    ),
+    TableCell(
+      verticalAlignment: TableCellVerticalAlignment.middle,
+      child: Text(recipe.name, style: titleStyle)
+    ),
+  ]
+),
+```
+
+[(source)](https://github.com/flutter/flutter/blob/master/examples/flutter_gallery/lib/demo/pesto_demo.dart#L454-L472)
+
+This is about the worst example I could find. Here, the `verticalAlignment:
+TableCellVerticalAlignment...`, `alignment: Alignment...`, `fit: BoxFit...`, and
+`verticalAlignment: TableCellVerticalAlignment...` parts are repetitive.
+
 ## Summary
 
 These are the main pain points I see:
@@ -613,3 +651,5 @@ These are the main pain points I see:
 
 *   Working with sequences of subexpressions is fussy, forces users to mess with
     formatting, and still doesn't use the available space well.
+
+*   Named arguments of enum types end up saying the type name twice.
