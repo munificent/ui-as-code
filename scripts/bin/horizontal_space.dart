@@ -1,5 +1,9 @@
+// Copyright (c) 2018, the Dart project authors.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
 import 'dart:io';
-import 'dart:math' as math;
+
+import 'package:ui_as_code_tools/histogram.dart';
 
 /// Looks at the aggregate line length statistics inside and outside of build()
 /// methods. Usage:
@@ -8,8 +12,8 @@ import 'dart:math' as math;
 ///
 /// if "--ignore-paren-lines" is passed, lines containing only ")", "),", or
 /// ");" are not counted.
-final buildHist = new Histogram();
-final otherHist = new Histogram();
+final buildHist = new Histogram<int>();
+final otherHist = new Histogram<int>();
 
 /// Detects functions that build widgets. Best effort only. Does not capture all functions.
 final RegExp buildFunctionSignature = new RegExp(r"Widget _?\w+\(BuildContext.*\) \{");
@@ -85,40 +89,5 @@ void measureFile(File file) {
         nesting--;
       }
     }
-  }
-}
-
-class Histogram {
-  final Map<int, int> _counts = {};
-
-  int get max => _counts.values.fold(0, math.max);
-  int get totalCount => _counts.values.fold(0, (a, b) => a + b);
-
-  int get sum {
-    var result = 0;
-    _counts.forEach((value, count) {
-      result += value * count;
-    });
-    return result;
-  }
-
-  int get median {
-    // TODO: Super hacky.
-    var list = <int>[];
-    _counts.forEach((value, count) {
-      for (var i = 0; i < count; i++) list.add(value);
-    });
-    list.sort();
-    return list[list.length ~/ 2];
-  }
-
-  int add(int object) {
-    _counts.putIfAbsent(object, () => 0);
-    return ++_counts[object];
-  }
-
-  int count(int object) {
-    if (!_counts.containsKey(object)) return 0;
-    return _counts[object];
   }
 }
