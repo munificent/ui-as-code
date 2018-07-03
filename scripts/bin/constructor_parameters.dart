@@ -16,8 +16,9 @@ import 'package:ui_as_code_tools/histogram.dart';
 /// parameters. This should help us gauge how important it is to support more
 /// than one var-arg parameter.
 final listParamCounts = new Histogram<int>();
-
 final listTypePattern = new RegExp(r"\b(Iterable|List)\b");
+
+final widgetParamCounts = new Histogram<int>();
 
 void main(List<String> arguments) {
   var directory = arguments[0];
@@ -38,6 +39,12 @@ void main(List<String> arguments) {
     var count = listParamCounts.count(i);
     var percent = (100.0 * count / listParamCounts.totalCount).toStringAsFixed(2);
     print("${count} ($percent%) constructors take $i sequence parameters");
+  }
+
+  for (var i = 0; i < 5; i++) {
+    var count = widgetParamCounts.count(i);
+    var percent = (100.0 * count / widgetParamCounts.totalCount).toStringAsFixed(2);
+    print("${count} ($percent%) constructors take $i Widget parameters");
   }
 }
 
@@ -113,19 +120,23 @@ class Visitor extends RecursiveAstVisitor<void> {
       if (member is ConstructorDeclaration) {
         var params = <String>[];
         var listCount = 0;
+        var widgetCount = 0;
+
+        checkParam(SimpleIdentifier name, TypeAnnotation type) {
+          type ??= findFieldType(name.name);
+          if (type.toString().contains("List<")) listCount++;
+          if (type.toString() == "Widget") widgetCount++;
+          params.add("${name.name}: $type");
+        }
+
         for (var param in member.parameters.parameters) {
           var actualParam =
               (param is DefaultFormalParameter) ? param.parameter : param;
 
           if (actualParam is FieldFormalParameter) {
-            var type =
-                actualParam.type ?? findFieldType(actualParam.identifier.name);
-            if (type.toString().contains("List<")) listCount++;
-            params.add("${actualParam.identifier.name}: $type");
+            checkParam(actualParam.identifier, actualParam.type);
           } else if (actualParam is SimpleFormalParameter) {
-            var type = actualParam.type.toString();
-            if (type.toString().contains(listTypePattern)) listCount++;
-            params.add("${actualParam.identifier.name}: $type");
+            checkParam(actualParam.identifier, actualParam.type);
           } else if (actualParam is FunctionTypedFormalParameter) {
             // Can ignore functions.
           } else {
@@ -135,7 +146,8 @@ class Visitor extends RecursiveAstVisitor<void> {
         }
 
         listParamCounts.add(listCount);
-        if (listCount > 1) show(node, member, params);
+        widgetParamCounts.add(widgetCount);
+        if (listCount > 1 || widgetCount > 1) show(node, member, params);
       }
     }
     return null;
