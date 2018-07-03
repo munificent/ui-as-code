@@ -68,7 +68,8 @@ Let's say that:
 Foo(args) with expr
 ```
 
-where `args` is an argument list an `expr` is some expression, desugars to:
+where `Foo` is some callable entity, `args` is an argument list, and `expr` is
+some expression, desugars to:
 
 ```dart
 Foo(args, expr)
