@@ -55,15 +55,15 @@ well for those libraries too.
 
 The list of problems is:
 
-* (P1) [Conditionally omitting content](#conditionally-omitting-content)
-* (P2) [Conditional intercession](#conditional-intercession)
-* (P3) [Long strings of hard-to-read closing delimiters](#long-strings-of-hard-to-read-closing-delimiters)
-* (P4) [Extra nesting and boilerplate for child widgets](#extra-nesting-and-boilerplate-for-child-widgets)
-* (P5) [Lots of punctuation to get right (or wrong)](#lots-of-punctuation-to-get-right-or-wrong)
-* (P6) [Hard to work with expression sequences](#hard-to-work-with-expression-sequences)
-* (P7) [Inefficient use of horizontal space](#inefficient-use-of-horizontal-space)
-* (P8) [Not friendly to automated formatting](#not-friendly-to-automated-formatting)
-* (P9) [Redundancy in arguments of enum types](#redundancy-in-arguments-of-enum-types)
+* (P1) [Conditionally omitting content](#p1-conditionally-omitting-content)
+* (P2) [Conditional intercession](#p2-conditional-intercession)
+* (P3) [Long strings of hard-to-read closing delimiters](#p3-long-strings-of-hard-to-read-closing-delimiters)
+* (P4) [Extra nesting and boilerplate for child widgets](#p4-extra-nesting-and-boilerplate-for-child-widgets)
+* (P5) [Lots of punctuation to get right (or wrong)](#p5-lots-of-punctuation-to-get-right-or-wrong)
+* (P6) [Hard to work with expression sequences](#p6-hard-to-work-with-expression-sequences)
+* (P7) [Inefficient use of horizontal space](#p7-inefficient-use-of-horizontal-space)
+* (P8) [Not friendly to automated formatting](#p8-not-friendly-to-automated-formatting)
+* (P9) [Redundancy in arguments of enum types](#p9-redundancy-in-arguments-of-enum-types)
 
 ## (P1) Conditionally omitting content
 
