@@ -65,7 +65,7 @@ attached to any particular syntax. For now, let's try infix `with`:
 Let's say that:
 
 ```dart
-@Foo(args) on expr
+Foo(args) with expr
 ```
 
 where `args` is an argument list an `expr` is some expression, desugars to:
