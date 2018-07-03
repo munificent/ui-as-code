@@ -1,1 +1,4 @@
 scripts/.packages
+
+# In-progress stuff that isn't ready to be committed yet.
+flux/

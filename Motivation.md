@@ -53,7 +53,19 @@ problems described apply to any framework or library that uses Dart expressions
 to build nested trees of objects or calls. Any solution we devise should work
 well for those libraries too.
 
-## Conditionally omitting content
+The list of problems is:
+
+* (P1) [Conditionally omitting content](#conditionally-omitting-content)
+* (P2) [Conditional intercession](#conditional-intercession)
+* (P3) [Long strings of hard-to-read closing delimiters](#long-strings-of-hard-to-read-closing-delimiters)
+* (P4) [Extra nesting and boilerplate for child widgets](#extra-nesting-and-boilerplate-for-child-widgets)
+* (P5) [Lots of punctuation to get right (or wrong)](#lots-of-punctuation-to-get-right-or-wrong)
+* (P6) [Hard to work with expression sequences](#hard-to-work-with-expression-sequences)
+* (P7) [Inefficient use of horizontal space](#inefficient-use-of-horizontal-space)
+* (P8) [Not friendly to automated formatting](#not-friendly-to-automated-formatting)
+* (P9) [Redundancy in arguments of enum types](#redundancy-in-arguments-of-enum-types)
+
+## (P1) Conditionally omitting content
 
 I'm listing this problem first because I think it causes the largest pain to
 users when they run into it. Where the other problems are more like
@@ -177,7 +189,7 @@ code motion. If the condition later goes away, will the maintainer remove all of
 the now-unneeded imperative code and collapse it back to its earlier declarative
 form, or just leave it unnecessarily bottom-up?
 
-## Conditional intercession
+## (P2) Conditional intercession
 
 A more complex form of the previous problem is code that wants to conditionally
 omit one level of a widget tree while maintaining the subtree. Say you have:
@@ -226,7 +238,7 @@ Sometimes you can use helper functions to straighten some of this
 out&mdash;which is one of the nice things about defining your UI in normal Dart
 code&mdash;but the resulting code is often non-obvious and harder to maintain.
 
-## Long strings of hard-to-read closing delimiters
+## (P3) Long strings of hard-to-read closing delimiters
 
 This is one of the first things most [Flutter users notice][tweet] that's a
 little funny about their UI code. An obvious consequence of deep nesting is deep
@@ -313,7 +325,7 @@ belongs to:
 This is great for people reading code inside those IDEs, but doesn't help people
 using other editors, doing code reviews, or reading code on GitHub.
 
-## Extra nesting and boilerplate for child widgets
+## (P4) Extra nesting and boilerplate for child widgets
 
 In the above example, each nested widget is a single child. Many widgets contain
 a series of children. In that case, those children are typically passed by
@@ -382,7 +394,7 @@ There are three arguments here whose values are inner widgets, `leading`,
 optional. So sometimes you do need distinct names. But in case where "child" or
 "children" is used, the word is just noise.
 
-## Lots of punctuation to get right (or wrong)
+## (P5) Lots of punctuation to get right (or wrong)
 
 Argument lists are surrounded by parentheses, but parentheses are also used for
 grouping in expressions. If you see square brackets, it's probably a list
@@ -442,7 +454,7 @@ This punctuation is visually noisy and error-prone. If you get it wrong,
 sometimes you get a compile error, or sometimes dartfmt doesn't do what you want
 to your code.
 
-## Hard to work with expression sequences
+## (P6) Hard to work with expression sequences
 
 A consequence of the above is that moving code around is error-prone. The rule
 to always put a trailing comma after each argument or collection element helps.
@@ -487,7 +499,7 @@ first problem in this list where you *do* find yourself needing to hoist
 subexpressions out into variables sometimes to conditionally modify parameters
 or child widets.
 
-## Inefficient use of horizontal space
+## (P7) Inefficient use of horizontal space
 
 In order to mitigate the previous problem, most idiomatic Flutter code puts each
 argument is on its own line, a trailing comma after the last argument, and the
@@ -573,7 +585,7 @@ the Dart SDK's `pkg/` directory. The Flutter corpus the `example/` directory in
 the main Flutter repo. Ignoring ")" means discarding lines are `)`, `),`, or
 `);`. Calculated using `scripts/bin/horizontal_space.dart`.</small>
 
-## Not friendly to automated formatting
+## (P8) Not friendly to automated formatting
 
 This "problem" is a little hand-wavey. Users working with Dart do so in the
 context of dartfmt. The goal is that they rarely need to think about formatting
@@ -597,7 +609,7 @@ makes the most sense for that domain. In general, the language syntax, API
 design, and formatting tools should work harmoniously together to free users
 from having to worry about whitespace.
 
-## Redundancy in arguments of enum types
+## (P9) Redundancy in arguments of enum types
 
 In Flutter, almost all parameters are named parameters. Most are optional and
 this lets users freely choose which to provide and which to omit. In UI code,
