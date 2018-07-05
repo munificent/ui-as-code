@@ -85,34 +85,34 @@ With that small amount of sugar (and using `=>`) the above example becomes:
 Widget build(BuildContext context) {
   return CupertinoPageScaffold with
     SafeArea(top: false, bottom: false) with
-    ListView(
-      children: [
-        SizedBox(height: 200.0) with
-        ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: 10,
-          itemExtent: 160.0,
-          itemBuilder: (context, index) {
-            return Padding(padding: const EdgeInsets.only(left: 16.0)) with
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.0),
-                  color: relatedColors[index],
-                ),
-              ) with
-              Center with
-              CupertinoButton(
-                child: const Icon(
-                  CupertinoIcons.plus_circled,
-                  color: CupertinoColors.white,
-                  size: 36.0,
-                ),
-                onPressed: () { },
-              );
-          },
-        ),
-      ],
-    );
+      ListView(
+        children: [
+          SizedBox(height: 200.0) with
+            ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 10,
+              itemExtent: 160.0,
+              itemBuilder: (context, index) {
+                return Padding(padding: const EdgeInsets.only(left: 16.0)) with
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8.0),
+                      color: relatedColors[index],
+                    ),
+                  ) with
+                    Center with
+                      CupertinoButton(
+                        child: const Icon(
+                          CupertinoIcons.plus_circled,
+                          color: CupertinoColors.white,
+                          size: 36.0,
+                        ),
+                        onPressed: () { },
+                      );
+              },
+            ),
+        ],
+      );
 }
 ```
 
