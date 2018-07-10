@@ -20,7 +20,7 @@ new TableRow(
       child: Text(recipe.name, style: titleStyle)
     ),
   ]
-),
+)
 ```
 
 Here, these arguments feel repetitive:
@@ -68,8 +68,10 @@ new TableRow(
       child: Text(recipe.name, style: titleStyle)
     ),
   ]
-),
+)
 ```
+
+## Scope and shadowing
 
 The "to the scope where `T` is declared" part is to resolve this ambiguity:
 
