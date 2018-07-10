@@ -2,7 +2,7 @@ Future<Null> _neverSatisfied() async {
   return showDialog<Null>(
     context: context,
     barrierDismissible: false, // user must tap button!
-    builder: (BuildContext context) {
+    builder: (context) {
       return AlertDialog(
         title: Text("Rewind and remember"),
         content: SingleChildScrollView(

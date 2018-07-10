@@ -19,8 +19,8 @@ class ChatMessage extends StatelessComponent {
 }
 
 class ChatScreenState extends State<ChatScreen> {
-  List<Map<String, String>> _messages = [];
-  InputValue _currentMessage = InputValue.empty;
+  var messages = <Map<String, String>>[];
+  var currentMessage = InputValue.empty;
   StreamSubscription _onChildAdded;
 
   Widget _buildDrawer(BuildContext context) {
@@ -62,14 +62,14 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildTextComposer() {
-    ThemeData themeData = Theme.of(context);
+    var themeData = Theme.of(context);
     return Column(
       children: [
         Row(
           children: [
             Flexible(
               child: Input(
-                value: _currentMessage,
+                value: currentMessage,
                 hintText: 'Enter message',
                 onSubmitted: _handleMessageAdded,
                 onChanged: _handleMessageChanged,
@@ -80,7 +80,7 @@ class ChatScreenState extends State<ChatScreen> {
               child: IconButton(
                 icon: 'content/send',
                 onPressed: _isComposing
-                    ? () => _handleMessageAdded(_currentMessage)
+                    ? () => _handleMessageAdded(currentMessage)
                     : null,
                 color: _isComposing
                     ? themeData.accentColor
@@ -107,7 +107,7 @@ class ChatScreenState extends State<ChatScreen> {
               child: Block(
                 padding: const EdgeDims.symmetric(horizontal: 8.0),
                 scrollAnchor: ViewportAnchor.end,
-                children: _messages.map((m) => ChatMessage(m)).toList(),
+                children: messages.map((m) => ChatMessage(m)).toList(),
               ),
             ),
             _buildTextComposer(),
