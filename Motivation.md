@@ -619,7 +619,7 @@ at the callsite makes it clearer what those arguments are for.
 But when the argument value is an enum type, this often leads to callsites that
 say the same (or similar) name twice:
 
-```
+```dart
 new TableRow(
   children: [
     TableCell(
