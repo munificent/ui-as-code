@@ -131,18 +131,6 @@ class Visitor extends RecursiveAstVisitor<void> {
     _pop();
   }
 
-//  @override
-//  R visitFunctionDeclaration(FunctionDeclaration node) {
-//    node.visitChildren(this);
-//    return null;
-//  }
-//
-//  @override
-//  R visitFunctionDeclarationStatement(FunctionDeclarationStatement node) {
-//    node.visitChildren(this);
-//    return null;
-//  }
-
   @override
   void visitFunctionExpression(FunctionExpression node) {
     var isDeclaration = node.parent is FunctionDeclaration;
@@ -153,31 +141,19 @@ class Visitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitListLiteral(ListLiteral node) {
-    // Only lists with trailing commas get indentation.
-    if (node.elements.isNotEmpty &&
-        node.elements.last.endToken.next.type == TokenType.COMMA) {
-      for (var element in node.elements) {
-        _push("[");
-        element.accept(this);
-        _pop();
-      }
-    } else {
-      node.visitChildren(this);
+    for (var element in node.elements) {
+      _push("[");
+      element.accept(this);
+      _pop();
     }
   }
 
   @override
   void visitMapLiteral(MapLiteral node) {
-    // Only maps with trailing commas get indentation.
-    if (node.entries.isNotEmpty &&
-        node.entries.last.endToken.next.type == TokenType.COMMA) {
-      for (var entry in node.entries) {
-        _push("{");
-        entry.value.accept(this);
-        _pop();
-      }
-    } else {
-      node.visitChildren(this);
+    for (var entry in node.entries) {
+      _push("{");
+      entry.value.accept(this);
+      _pop();
     }
   }
 
@@ -188,7 +164,6 @@ class Visitor extends RecursiveAstVisitor<void> {
 
   void _pop() {
     if (_pushed && _inBuildMethods > 0) {
-//      print(_stack.join(" "));
       nestings.add(_stack.join(" "));
       nestingDepths.add(_stack.length);
       childNestings.add(_stack.where((s) => s.contains("child")).length);
