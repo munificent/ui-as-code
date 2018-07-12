@@ -1,38 +1,21 @@
 // Copyright (c) 2018, the Dart project authors.  Please see the AUTHORS file
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
-import 'dart:io';
-
 import 'package:analyzer/analyzer.dart';
-import 'package:analyzer/src/dart/scanner/reader.dart';
-import 'package:analyzer/src/dart/scanner/scanner.dart';
-import 'package:analyzer/src/generated/parser.dart';
-import 'package:analyzer/src/string_source.dart';
-import 'package:path/path.dart' as p;
 
 import 'package:ui_as_code_tools/histogram.dart';
+import 'package:ui_as_code_tools/parser.dart';
 
-/// Looks at constructors to see how many of them take one or more list-typed
-/// parameters. This should help us gauge how important it is to support more
-/// than one var-arg parameter.
+/// Looks at constructor declarations to see how many of them take one or more
+/// list-typed parameters. This should help us gauge how important it is to
+/// support more than one var-arg parameter.
 final listParamCounts = new Histogram<int>();
 final listTypePattern = new RegExp(r"\b(Iterable|List)\b");
 
 final widgetParamCounts = new Histogram<int>();
 
 void main(List<String> arguments) {
-  var directory = arguments[0];
-  for (var entry in new Directory(directory).listSync(recursive: true)) {
-    if (!entry.path.endsWith(".dart")) continue;
-
-    // Don't care about tests.
-    if (entry.path.contains("/test/")) continue;
-
-    // Don't care about cached packages.
-    if (entry.path.contains("/.dart_tool/")) continue;
-
-    processFile(entry as File, p.relative(entry.path, from: directory));
-  }
+  parseDirectory(arguments[0], (path) => new Visitor(path));
 
   print("${listParamCounts.totalCount} classes");
   for (var i = 0; i < 5; i++) {
@@ -45,35 +28,6 @@ void main(List<String> arguments) {
     var count = widgetParamCounts.count(i);
     var percent = (100.0 * count / widgetParamCounts.totalCount).toStringAsFixed(2);
     print("${count} ($percent%) constructors take $i Widget parameters");
-  }
-}
-
-void processFile(File file, String path) {
-  var source = file.readAsStringSync();
-
-  var errorListener = new ErrorListener();
-
-  // Tokenize the source.
-  var reader = new CharSequenceReader(source);
-  var stringSource = new StringSource(source, file.path);
-  var scanner = new Scanner(stringSource, reader, errorListener);
-  var startToken = scanner.tokenize();
-
-  // Parse it.
-  var parser = new Parser(stringSource, errorListener);
-  parser.enableOptionalNewAndConst = true;
-
-  var node = parser.parseCompilationUnit(startToken);
-
-  // Format it.
-  var visitor = new Visitor(path);
-  node.accept(visitor);
-}
-
-/// A simple [AnalysisErrorListener] that just collects the reported errors.
-class ErrorListener implements AnalysisErrorListener {
-  void onError(AnalysisError error) {
-    print(error);
   }
 }
 

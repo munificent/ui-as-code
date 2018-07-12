@@ -7,6 +7,7 @@ class Histogram<T> {
   final Map<T, int> _counts = {};
 
   int get max => _counts.values.fold(0, math.max);
+
   int get totalCount => _counts.values.fold(0, (a, b) => a + b);
 
   // Note: Assumes T is int.
@@ -48,5 +49,42 @@ class Histogram<T> {
     var objects = _counts.keys.toList();
     objects.sort((a, b) => _counts[b].compareTo(_counts[a]));
     return objects;
+  }
+
+  void printDescending(String label) {
+    _print(label, descending());
+  }
+
+  void printOrdered(String label) {
+    var objects = _counts.keys.toList();
+    objects.sort();
+    _print(label, objects);
+  }
+
+  void _print(String label, List<T> keys) {
+    var total = totalCount;
+    print("\n--- $label ($totalCount total) ---");
+
+    var longest = _counts.keys
+        .fold<int>(0, (length, key) => math.max(length, key.toString().length));
+
+    var skipped = 0;
+    for (var object in keys) {
+      var countString = count(object).toString().padLeft(7);
+      var percent = 100 * count(object) / total;
+      var percentString = percent.toStringAsFixed(3).padLeft(7);
+      if (percent >= 0.1) {
+        var line = "${countString} ($percentString%): $object";
+        if (longest < 20) {
+          line = line.padRight(longest + 2);
+          line += "*" * percent.ceil();
+        }
+        print(line);
+      } else {
+        skipped++;
+      }
+    }
+
+    if (skipped > 0) print("And $skipped more less than 0.1%...");
   }
 }
