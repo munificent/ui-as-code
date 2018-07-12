@@ -75,8 +75,8 @@ class Histogram<T> {
       var percentString = percent.toStringAsFixed(3).padLeft(7);
       if (percent >= 0.1) {
         var line = "${countString} ($percentString%): $object";
-        if (longest < 20) {
-          line = line.padRight(longest + 2);
+        if (longest < 40) {
+          line = line.padRight(longest + 22);
           line += "*" * percent.ceil();
         }
         print(line);
