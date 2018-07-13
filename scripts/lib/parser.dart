@@ -10,9 +10,13 @@ import 'package:analyzer/src/generated/parser.dart';
 import 'package:analyzer/src/string_source.dart';
 import 'package:path/path.dart' as p;
 
-void parseDirectory(
-    String directory, AstVisitor<void> Function(String) createVisitor) {
-  for (var entry in new Directory(directory).listSync(recursive: true)) {
+void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
+  if (new File(path).existsSync()) {
+    _parseFile(new File(path), p.relative(path, from: path), createVisitor);
+    return;
+  }
+
+  for (var entry in new Directory(path).listSync(recursive: true)) {
     if (!entry.path.endsWith(".dart")) continue;
 
     // Don't care about tests.
@@ -22,7 +26,7 @@ void parseDirectory(
     if (entry.path.contains("/.dart_tool/")) continue;
 
     _parseFile(
-        entry as File, p.relative(entry.path, from: directory), createVisitor);
+        entry as File, p.relative(entry.path, from: path), createVisitor);
   }
 }
 

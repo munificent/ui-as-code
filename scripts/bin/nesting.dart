@@ -13,6 +13,9 @@ final nestings = new Histogram<String>();
 /// The number of levels of nesting active when each argument appears.
 final nestingDepths = new Histogram<int>();
 
+/// The number of levels of nesting active when each argument appears.
+final ignoringLists = new Histogram<int>();
+
 /// The number of levels of "child" or "children" named parameter nesting when
 /// each argument appears.
 final childNestings = new Histogram<int>();
@@ -26,9 +29,12 @@ void main(List<String> arguments) {
   arguments = arguments.toList();
   simplifyNames = arguments.remove("--simplify");
   var allCode = arguments.remove("--all");
-  parseDirectory(arguments[0], (path) => new Visitor(path, allCode: allCode));
+  parsePath(arguments[0], (path) => new Visitor(path, allCode: allCode));
 
   nestingDepths.printOrdered("Nesting depth");
+  print("average = ${nestingDepths.sum / nestingDepths.totalCount}");
+  ignoringLists.printOrdered("Ignoring lists");
+  print("average = ${ignoringLists.sum / ignoringLists.totalCount}");
   childNestings.printOrdered("Child[ren] nesting depth");
   argumentNames.printDescending("Argument names");
   nestings.printDescending("Argument nesting");
@@ -166,6 +172,7 @@ class Visitor extends RecursiveAstVisitor<void> {
     if (_pushed && _inBuildMethods > 0) {
       nestings.add(_stack.join(" "));
       nestingDepths.add(_stack.length);
+      ignoringLists.add(_stack.where((s) => s != "[").length);
       childNestings.add(_stack.where((s) => s.contains("child")).length);
     }
     _pushed = false;
