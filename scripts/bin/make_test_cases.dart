@@ -42,18 +42,18 @@ void main(List<String> arguments) {
   // Suppose that all arguments were always at the leaves, and that there were N
   // build methods with 11-N nesting levels.
   for (var n = 1; n <= 10; n++) {
-    for (var i = 0; i < n; i++) {
+    for (var i = 1; i <= 11 - n; i++) {
       write("Widget atLeaves_nest${n}_build$i() {");
       write("return ");
-      for (var level = 0; level < n; level++) {
+      for (var level = 1; level <= n; level++) {
         write("Widget(");
       }
 
       write("argument,");
 
-      for (var level = 0; level < n; level++) {
+      for (var level = 1; level <= n; level++) {
         write(")");
-        if (level != n - 1) write(",");
+        if (level != n) write(",");
       }
 
       write(";");
@@ -68,17 +68,17 @@ void main(List<String> arguments) {
   // ancestor widgets as the argument-sporting widget had descendant widgets,
   // rounding up), and that there were N build methods with 11-N nesting levels.
   for (var n = 1; n <= 10; n++) {
-    for (var i = 0; i < n; i++) {
+    for (var i = 1; i <= 11 - n; i++) {
       write("Widget atMiddle_nest${n}_build$i() {");
       write("return ");
-      for (var level = 0; level < n; level++) {
+      for (var level = 1; level <= n; level++) {
         write("Widget(");
         if (level == (n / 2).ceil()) write("argument,");
       }
 
-      for (var level = 0; level < n; level++) {
+      for (var level = 1; level <= n; level++) {
         write(")");
-        if (level != n - 1) write(",");
+        if (level != n) write(",");
       }
 
       write(";");
@@ -92,17 +92,17 @@ void main(List<String> arguments) {
   // Suppose that every level had one argument, and that there were N build
   // methods with 11-N nesting levels.
   for (var n = 1; n <= 10; n++) {
-    for (var i = 0; i < n; i++) {
+    for (var i = 1; i <= 11 - n; i++) {
       write("Widget atEvery_nest${n}_build$i() {");
       write("return ");
-      for (var level = 0; level < n; level++) {
+      for (var level = 1; level <= n; level++) {
         write("Widget(");
         write("argument,");
       }
 
-      for (var level = 0; level < n; level++) {
+      for (var level = 1; level <= n; level++) {
         write(")");
-        if (level != n - 1) write(",");
+        if (level != n) write(",");
       }
 
       write(";");
