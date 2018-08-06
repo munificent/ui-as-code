@@ -7,13 +7,13 @@ Widget build(BuildContext context) {
   if (!isWednesday) {
     result = DecoratedBox(
       color: Colors.green,
-      child: result,
+      result,
     );
   }
 
   return Container(
     color: Colors.red,
-    child: result,
+    result,
   );
 }
 
@@ -27,14 +27,14 @@ Widget _buildBox() {
 
   return DecoratedBox(
     color: Colors.green,
-    child: blueBox,
+    blueBox,
   );
 }
 
 Widget build(BuildContext context) {
   return Container(
     color: Colors.red,
-    child: _buildBox(),
+    _buildBox(),
   );
 }
 
@@ -47,11 +47,11 @@ Widget conditional(
 Widget build(BuildContext context) {
   result = Container(
     color: Colors.red,
-    child: conditional(
+    conditional(
       !isWednesday,
       (widget) => DecoratedBox(
             color: Colors.green,
-            child: widget,
+            widget,
           ),
       Container(
         color: Colors.blue,

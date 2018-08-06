@@ -41,3 +41,4 @@ Lua was designed as [a data and configuration language](https://www.lua.org/pil/
 *   Angular templates
 *   Ruby [splats and destructuring](http://blog.honeybadger.io/ruby-splat-array-manipulation-destructuring/)
 *   [Anko Layouts](https://github.com/Kotlin/anko/wiki/Anko-Layouts)
+*   [Named argument lists](https://ceylon-lang.org/documentation/1.3/reference/expression/named-argument-list/) in Ceylon
