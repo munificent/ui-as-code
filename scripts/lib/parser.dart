@@ -4,11 +4,22 @@
 import 'dart:io';
 
 import 'package:analyzer/analyzer.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/src/dart/scanner/reader.dart';
 import 'package:analyzer/src/dart/scanner/scanner.dart';
 import 'package:analyzer/src/generated/parser.dart';
 import 'package:analyzer/src/string_source.dart';
 import 'package:path/path.dart' as p;
+
+Token tokenizeString(String source) {
+  var errorListener = new _ErrorListener();
+
+  // Tokenize the source.
+  var reader = new CharSequenceReader(source);
+  var stringSource = new StringSource(source, "<string>");
+  var scanner = new Scanner(stringSource, reader, errorListener);
+  return scanner.tokenize();
+}
 
 void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
   if (new File(path).existsSync()) {
