@@ -13,7 +13,7 @@ Widget build(BuildContext context) {
           child: RepaintBoundary(
             child: AnimatedBuilder(
               animation: _listenable, // immutable
-              builder: (BuildContext context, Widget child) {
+              builder: (context, child) {
                 return widget.route.buildTransitions(
                   context,
                   widget.route.animation,
@@ -27,7 +27,7 @@ Widget build(BuildContext context) {
               child: _page ??= RepaintBoundary(
                 key: widget.route._subtreeKey, // immutable
                 child: Builder(
-                  builder: (BuildContext context) {
+                  builder: (context) {
                     return widget.route.buildPage(
                       context,
                       widget.route.animation,
