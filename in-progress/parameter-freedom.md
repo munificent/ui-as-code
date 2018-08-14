@@ -870,7 +870,7 @@ with a deprecation period:
 ```dart
 SomeWidget(aRequiredParameter, List<Widget> ...children2,
     {@deprecated List<Widget> children}) {
-  if (children != null) children2.addAll(children);
+  children ??= children2;
   // ...
 }
 ```
@@ -935,6 +935,12 @@ gathering more feasiblity and usability data:
     functions where most arguments are list literals. Or look for declarations
     containing a series of optional positional parameters of the same type and
     similar names, like `foo([Type thing1, Type thing2, Type thing3]).
+
+*   If we're adding a spread syntax, it's natural to allow it inside list and
+    map literals as well. I don't do that here because it's orthogonal to this
+    proposal, but we should consider writing a separate proposal for that. (I
+    wouldn't be surprised if `...` ended up more useful in list literals than it
+    is in argument lists.)
 
 ## Questions and Alternatives
 

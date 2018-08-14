@@ -13,19 +13,57 @@ class Parser {
 
   bool get isDone => _token.type == TokenType.EOF;
 
+  ///     formalParameterList:
+  ///       '(' ')' |
+  ///       '(' positionalSections ')' |
+  ///       '(' namedParameters ')' |
+  ///       '(' positionalSections ',' namedParameters ')' |
+  ///       ;
   Signature parseSignature() {
-    var positional = <Parameter>[];
-    var named = <Parameter>[];
+    var positional = _positionalSections();
+    var named = _namedParameters();
 
-    while (!isDone && !_peek(TokenType.OPEN_CURLY_BRACKET)) {
-      positional.add(_parameter());
+    if (!isDone) _fail("Expected end of input.");
 
-      if (!_match(TokenType.COMMA)) break;
-    }
+    return Signature(positional, named);
+  }
 
+  ///     positionalSections:
+  ///       positionalSection ( ', ' positionalSection )*
+  ///       ;
+  ///
+  ///     positionalSection:
+  ///       normalFormalParameter |
+  ///       restParameter |
+  ///       '[' defaultFormalParameter (', ' defaultFormalParameter)* ']'
+  ///       ;
+  List<Parameter> _positionalSections() {
+    if (isDone || _peek(TokenType.OPEN_CURLY_BRACKET)) return [];
+
+    List<Parameter> parameters = [];
+    do {
+      if (_match(TokenType.OPEN_SQUARE_BRACKET)) {
+        do {
+          parameters.add(_parameter(isOptional: true));
+        } while (_match(TokenType.COMMA));
+
+        _expect(TokenType.CLOSE_SQUARE_BRACKET, "Expect ']' after parameters.");
+      } else {
+        parameters.add(_parameter(isOptional: false));
+      }
+
+      if (isDone) break;
+      _expect(TokenType.COMMA, "Expect ',' after parameter.");
+    } while (!_peek(TokenType.OPEN_CURLY_BRACKET));
+
+    return parameters;
+  }
+
+  List<Parameter> _namedParameters() {
+    List<Parameter> parameters = [];
     if (_match(TokenType.OPEN_CURLY_BRACKET)) {
       while (!_peek(TokenType.CLOSE_CURLY_BRACKET)) {
-        named.add(_parameter());
+        parameters.add(_parameter(isOptional: false));
 
         if (!_match(TokenType.COMMA)) break;
       }
@@ -33,10 +71,10 @@ class Parser {
       _expect(TokenType.CLOSE_CURLY_BRACKET, "Expect '}'.");
     }
 
-    return Signature(positional, named);
+    return parameters;
   }
 
-  Parameter _parameter() {
+  Parameter _parameter({bool isOptional = false}) {
     // TODO: Make type optional.
     var type = _expect(TokenType.IDENTIFIER, "Expect parameter type.").lexeme;
 
@@ -44,14 +82,7 @@ class Parser {
     var isRest = _match(TokenType.PERIOD_PERIOD_PERIOD);
     var name = _expect(TokenType.IDENTIFIER, "Expect parameter name.").lexeme;
 
-    var isOptional = false;
-    Object defaultValue;
-    if (_match(TokenType.EQ)) {
-      isOptional = true;
-      defaultValue = _value();
-    }
-
-    return Parameter(type, name, isRest, isOptional, defaultValue);
+    return Parameter(type, name, isRest, isOptional);
   }
 
   List<Argument> parseInvocation() {

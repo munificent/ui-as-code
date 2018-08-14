@@ -13,12 +13,32 @@ class Signature {
   Signature(this.positional, this.named);
 
   String toString() {
-    var result = positional.join(", ");
-    if (named.isNotEmpty) {
-      if (positional.isNotEmpty) result += ", ";
-      result += "{${named.join(', ')}}";
+    var sections = <Object>[];
+    var optionals = <Object>[];
+
+    finishOptionals() {
+      if (optionals.isNotEmpty) {
+        sections.add("[${optionals.join(', ')}]");
+        optionals.clear();
+      }
     }
-    return result;
+
+    for (var parameter in positional) {
+      if (parameter.isOptional) {
+        optionals.add(parameter);
+      } else {
+        finishOptionals();
+        sections.add(parameter);
+      }
+    }
+
+    finishOptionals();
+
+    if (named.isNotEmpty) {
+      sections.add("{${named.join(', ')}}");
+    }
+
+    return sections.join(", ");
   }
 }
 
@@ -33,12 +53,10 @@ class Parameter {
 
   final bool isOptional;
 
-  final Object defaultValue;
-
   bool get isRequired => !isOptional && !isRest;
 
   Parameter(
-      this.type, this.name, this.isRest, this.isOptional, this.defaultValue);
+      this.type, this.name, this.isRest, this.isOptional);
 
   String toString() {
     var result = "";
@@ -46,8 +64,6 @@ class Parameter {
 
     if (isRest) result += "*";
     result += name;
-
-    if (isOptional) result += " = $defaultValue";
 
     return result;
   }
