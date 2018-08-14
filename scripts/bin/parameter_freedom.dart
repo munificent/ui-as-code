@@ -6,58 +6,14 @@ import 'package:ui_as_code_tools/parameter_freedom/parser.dart';
 
 Signature _signature;
 
+int passed = 0;
+int failed = 0;
+
 void main(List<String> arguments) {
-  signature("");
-  expectSubtype("");
-  expectNotSubtype("int a");
-  expectSubtype("int a = 1");
-  expectSubtype("List ...r");
+  testBinding();
+  testSubtype();
 
-  signature("int a, bool b, String c");
-  expectSubtype("int c, bool d, String e");
-  expectNotSubtype("int c, bool d, num e"); // Wrong param type.
-  expectNotSubtype("int c, bool d");
-  expectNotSubtype("int c, bool d, String e, num f");
-
-  // Can add optional ones anywhere. When called through super type with only
-  // three, all the optionals go away.
-  expectSubtype("num f = 1, int c, num f = 1, bool d, String e");
-  expectSubtype("int c, num f = 1, bool d, String e");
-  expectSubtype("int c, bool d, num f = 1, String e");
-  expectSubtype("int c, bool d, String e, num f = 1");
-  expectSubtype("num f = 1, int c, num g = 1, num h = 1, bool d, String e, num f = 1");
-
-  signature("int a, bool b = true, String c = null, num d");
-  expectSubtype("int z, bool y = true, String x = null, num d");
-
-  // Must maintain optionals.
-  expectNotSubtype("int z, bool y, String x = null, num d");
-  expectNotSubtype("int z, bool y = true, String x, num d");
-  expectNotSubtype("int z, bool y, String x, num d");
-
-  // Can add more optionals after the last.
-  expectSubtype("int z, bool y = true, String x = null, bool b = false, num d, int i = 1");
-
-  // Rests must match.
-  signature("int a, List ...b, List c");
-  expectSubtype("int c, List ...d, List e");
-  expectNotSubtype("int c, List d, List e");
-  signature("int a, List b, List c");
-  expectNotSubtype("int c, List ...d, List e");
-
-  // Can add rest param anywhere.
-  signature("int a, bool b, String c");
-  expectSubtype("List ...r, int a, bool b, String c");
-  expectSubtype("int a, List ...r, bool b, String c");
-  expectSubtype("int a, bool b, List ...r, String c");
-  expectSubtype("int a, bool b, String c, List ...r");
-
-  // Rest is not substitute for optional.
-  signature("bool a, int b = 1");
-  expectNotSubtype("bool a, List ...b");
-
-  signature("bool a, List ...b");
-  expectNotSubtype("bool a, int b = 1");
+  print("$passed/${passed + failed} tests passed.");
 }
 
 void testBinding() {
@@ -112,9 +68,75 @@ void testBinding() {
   expectBind("2, a: 3, 4, c: 5, 6", binds: "a: 3, b: [2, 4, 6], c: 5");
 }
 
+void testSubtype() {
+  signature("");
+  expectSubtype("");
+  expectNotSubtype("int a");
+  expectSubtype("int a = 1");
+  expectSubtype("List ...r");
+
+  signature("int a, bool b, String c");
+  expectSubtype("int c, bool d, String e");
+  expectNotSubtype("int c, bool d, num e"); // Wrong param type.
+  expectNotSubtype("int c, bool d");
+  expectNotSubtype("int c, bool d, String e, num f");
+
+  // Can add optional ones anywhere. When called through super type with only
+  // three, all the optionals go away.
+  expectSubtype("num f = 1, int c, num f = 1, bool d, String e");
+  expectSubtype("int c, num f = 1, bool d, String e");
+  expectSubtype("int c, bool d, num f = 1, String e");
+  expectSubtype("int c, bool d, String e, num f = 1");
+  expectSubtype(
+      "num f = 1, int c, num g = 1, num h = 1, bool d, String e, num f = 1");
+
+  signature("int a, bool b = true, String c = null, num d");
+  expectSubtype("int z, bool y = true, String x = null, num d");
+
+  // Must maintain optionals.
+  expectNotSubtype("int z, bool y, String x = null, num d");
+  expectNotSubtype("int z, bool y = true, String x, num d");
+  expectNotSubtype("int z, bool y, String x, num d");
+
+  // Can add more optionals after the last.
+  expectSubtype(
+      "int z, bool y = true, String x = null, bool b = false, num d, int i = 1");
+
+  // Rests must match.
+  signature("int a, List ...b, List c");
+  expectSubtype("int c, List ...d, List e");
+  expectNotSubtype("int c, List d, List e");
+  signature("int a, List b, List c");
+  expectNotSubtype("int c, List ...d, List e");
+
+  // Can add rest param anywhere.
+  signature("int a, bool b, String c");
+  expectSubtype("List ...r, int a, bool b, String c");
+  expectSubtype("int a, List ...r, bool b, String c");
+  expectSubtype("int a, bool b, List ...r, String c");
+  expectSubtype("int a, bool b, String c, List ...r");
+
+  // Rest is not substitute for optional.
+  signature("bool a, int b = 1");
+  expectNotSubtype("bool a, List ...b");
+
+  signature("bool a, List ...b");
+  expectNotSubtype("bool a, int b = 1");
+}
+
 void signature(String source) {
   _signature = Parser(source).parseSignature();
   print("($source)");
+}
+
+void fail(String invocation, String message) {
+  print("FAIL ($invocation): $message.");
+  failed++;
+}
+
+void pass(String invocation, String message) {
+  print("PASS ($invocation): $message");
+  passed++;
 }
 
 void expectBind(String invocation, {String binds, String error}) {
@@ -130,18 +152,17 @@ void expectBind(String invocation, {String binds, String error}) {
 
   if (bindings.containsKey("error")) {
     if (error == null) {
-      print("FAIL '$invocation': Expected $expect but got error "
-          "'${bindings["error"]}'.");
+      fail(invocation, "Expected $expect but got error '${bindings["error"]}'");
     } else if (error != bindings["error"]) {
-      print("FAIL '$invocation': Expected error '$error' but got error "
-          "'${bindings["error"]}'.");
+      fail(invocation,
+          "Expected error '$error' but got error '${bindings["error"]}'");
     }
 
     return;
   }
 
   if (error != null) {
-    print("FAIL '$invocation': Expected error '$error' but bound $bindings.");
+    fail(invocation, "Expected error '$error' but bound $bindings");
   }
 
   var keys = expect.keys.toSet();
@@ -150,13 +171,13 @@ void expectBind(String invocation, {String binds, String error}) {
   var failed = false;
   for (var key in keys) {
     if (!objectsEqual(expect[key], bindings[key])) {
-      print("FAIL '$invocation': Expected '$key' to be '${expect[key]}', "
-          "but was '${bindings[key]}'.");
+      fail(invocation,
+          "Expected '$key' to be '${expect[key]}', but was '${bindings[key]}'");
       failed = true;
     }
   }
 
-  if (!failed) print("PASS '$invocation': $bindings");
+  if (!failed) pass(invocation, bindings.toString());
 }
 
 void expectSubtype(String other) {
@@ -171,15 +192,15 @@ void _testSubtype(String other, bool expect) {
   var actual = isSubtype(_signature, Parser(other).parseSignature());
   if (expect) {
     if (actual) {
-      print("PASS ($other): Is subtype.");
+      pass(other, "Is subtype.");
     } else {
-      print("FAIL ($other): Is not subtype and should be.");
+      fail(other, "Is not subtype and should be.");
     }
   } else {
     if (actual) {
-      print("FAIL ($other): Is subtype and should not be.");
+      fail(other, "Is subtype and should not be.");
     } else {
-      print("PASS ($other): Is not subtype.");
+      pass(other, "Is not subtype.");
     }
   }
 }
@@ -195,8 +216,6 @@ bool isSubtype(Signature a, Signature b) {
 
     var bParams = atArity(b, arity);
     if (bParams == null) return false;
-
-//    print("$arity $aParams <: $bParams");
 
     assert(aParams.length == bParams.length);
     for (var i = 0; i < aParams.length; i++) {
@@ -237,7 +256,8 @@ List<Parameter> atArity(Signature signature, int arity) {
   }
 
   // See if there is at least one argument for the rest parameter.
-  var hasRest = arity - signature.required.length - signature.optional.length > 0;
+  var hasRest =
+      arity - signature.required.length - signature.optional.length > 0;
 
   // TODO: Need to check for too many?
   var result = <Parameter>[];
@@ -272,7 +292,7 @@ bool objectsEqual(Object a, Object b) {
 }
 
 Map<String, Object> bind(List<Argument> invocation, Signature signature) {
-  fail(String error) => {"error": error};
+  error(String message) => {"error": message};
   // Principles:
   // - Parameter type does not affect binding.
   // - No parameter will get a positional argument if given a named one.
@@ -288,12 +308,12 @@ Map<String, Object> bind(List<Argument> invocation, Signature signature) {
   for (var arg in namedArgs) {
     var parameter = signature.positional
         .firstWhere((param) => param.name == arg.name, orElse: () => null);
-    if (parameter == null) return fail("Unknown parameter '${arg.name}'.");
+    if (parameter == null) return error("Unknown parameter '${arg.name}'.");
 
-    if (parameter.isRest) return fail("Can't pass rest parameter by name.");
+    if (parameter.isRest) return error("Can't pass rest parameter by name.");
 
     if (bindings.containsKey(arg.name)) {
-      return fail("Bound '${arg.name}' twice.");
+      return error("Bound '${arg.name}' twice.");
     }
 
     bindings[arg.name] = arg.value;
@@ -322,12 +342,12 @@ Map<String, Object> bind(List<Argument> invocation, Signature signature) {
       positionalArgs.length - requiredParamCount - optionalParamCount;
 
   if (requiredParamCount > positionalArgs.length) {
-    return fail("Not enough positional arguments.");
+    return error("Not enough positional arguments.");
   }
 
   if (providedRestArgCount > 0 &&
       !positionalParams.any((param) => param.isRest)) {
-    return fail("Too many positional arguments.");
+    return error("Too many positional arguments.");
   }
 
   var argIndex = 0;
