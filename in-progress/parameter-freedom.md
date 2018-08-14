@@ -545,12 +545,12 @@ I realize that's somewhat confusing, but this is a *very* pathological example.
 In simple cases, I think the behavior does about what you expect. The important
 parts are:
 
-* We can determine which "overload" is chosen, and thus the types of each
-  parameter by looking at just the arity of the invocation, which is statically
-  known.
-* We don't need to use the types of any parameters to determine how optional
-  parameters are bound.
-* Existing Dart functions continue to behave the same as they do today.
+*   We can determine which "overload" is chosen, and thus the types of each
+    parameter by looking at just the arity of the invocation, which is
+    statically known.
+*   We don't need to use the types of any parameters to determine how optional
+    parameters are bound.
+*   Existing Dart functions continue to behave the same as they do today.
 
 ### Rest parameters
 
@@ -593,16 +593,25 @@ function(1, 2, 3, 4, 5, 6) // a: 1, b: 2, c: [3, 4], d: 5, e: 6
 ```
 
 This lets us decide which positional arguments get shunted into the rest
-parameter. Once they have, how does it behave? The goal is to give users a
-useful *rest parameter object* while also giving implementation teams as much
-room to optimize as possible.
+parameter. The implementation then takes those arguments and bundles them into a
+*rest parameter object*. (An optimized implementation may not actually
+materialize the object, but from the user's perspective, it conceptually
+exists).
 
-To that end, inside the body of the function, the object you get for the rest
-parameter:
+Since the implementation creates the object, there are some restrictions on what
+types are allowed for a rest parameter. It is a compile-time error for a rest
+parameter to have a static type other than `dynamic` or `List<T>` for some `T`.
+(We allow `dynamic` mostly to support unannotated rest parameters.)
+
+Once the implementation has created the rest parameter object, how does it
+behave? The goal is to give users a useful object while also giving
+implementation teams as much room to optimize as possible.
+
+To that end, inside the body of the function, the object:
 
 *   Implements `List<T>`. If the static type of the rest parameter is `List<T>`
-    or `Iterable<T>` for some `T`, then the rest parameter object's type has
-    that same type parameter. Otherwise, it's `List<Object>`.
+    for some `T`, then the rest parameter object's type has that same type
+    parameter. Otherwise, it's `List<Object>`.
 
 *   *May* throw a runtime exception on any attempts to modify the object. This
     lets implementations reuse a const empty list in cases where no arguments
@@ -657,7 +666,7 @@ interleaved with other non-spread arguments. They just all need to get bound to
 the rest parameter, as in:
 
 ```dart
-function(String a, List<int> ints, double b) { ... }
+function(String a, List<int> ...ints, double b) { ... }
 
 var args = [2, 3];
 var more = [5, 6];
@@ -709,7 +718,7 @@ information known statically from the method signature and the callsite:
 
         2.  If the parameter is the rest parameter:
 
-            1.  If *restArgs* is greater than zero, then bind that many
+            1.  If `restArgs` is greater than zero, then bind that many
                 arguments to the rest parameter and advance past them. If any of
                 them are spread arguments, note that they need to be unpacked.
 
@@ -745,53 +754,54 @@ contains a (possibly empty) set of *named parameters*. Each named parameter has
 a *name* (obviously) and a type.
 
 I'm ignoring generic type arguments because they aren't affected by this
-proposal. To determine if function type `T` is a subtype of function type `S`:
+proposal. To determine if function type `Type` is a subtype of function type
+`Supe`:
 
-1.  Let `required` be the number of required positional parameters in `S`.
+1.  Let `required` be the number of required positional parameters in `Supe`.
 
-    Let `positional` be the total number positional parameters in `S` &mdash;
+    Let `positional` be the total number positional parameters in `Supe` &mdash;
     required, optional, and rest.
 
-    It is valid to call `S` with anywhere from `required` to `positional`
+    It is valid to call `Supe` with anywhere from `required` to `positional`
     positional arguments (or more if there is a rest parameter, but we can
     ignore more than one of those).
 
     For each arity `arity` in that range:
 
-    1.  Get the parameter list used for `T` at arity `arity` (see below).
+    1.  Get the parameter list used for `Supe` at arity `arity` (see below).
 
-    2.  Get the parameter list used for `S` at arity `arity`. If it does not
-        have a valid one, `T` is not a subtype.
+    2.  Get the parameter list used for `Type` at arity `arity`. If it does not
+        have a valid one, `Type` is not a subtype.
 
-    3.  Otherwise, for each corresponding pair of parameters `pT` and `pS` in
-        the parameter lists:
+    3.  Otherwise, for each corresponding pair of parameters `pType` and `pSupe`
+        in the parameter lists:
 
-        1.  If `pS` is not a subtype of `pS`, `T` is not a subtype. This is the
-            usual contravariant parameter subtype rule.
+        1.  If `pSupe` is not a subtype of `pType`, `Type` is not a subtype.
+            This is the usual contravariant parameter subtype rule.
 
-        2.  If `pT` is a rest parameter and `pS` is not, or vice versa, `T` is
-            not a subtype.
+        2.  If `pType` is a rest parameter and `pSupe` is not, or vice versa,
+            `Type` is not a subtype.
 
-2.  It the return type of `T` is not a subtype of the return type of `S`, `T`
-    is not a subtype.
+2.  It the return type of `Type` is not a subtype of the return type of `Supe`,
+    `Type` is not a subtype.
 
 3.  Apply the existing function subtyping rules for named parameters.
 
-4.  If we get here, `T` is a subtype.
+4.  If we get here, `Type` is a subtype.
 
 #### Parameter list at arity
 
-To generate the parameter list of a function type `T` at arity `arity`:
+To generate the parameter list of a function type `Type` at arity `arity`:
 
-1.  Let `positional` be the total number positional parameters in `T` &mdash;
+1.  Let `positional` be the total number positional parameters in `Type` &mdash;
     required, optional, and rest.
 
-    Let `required` be the number of required positional parameters in `T`.
+    Let `required` be the number of required positional parameters in `Type`.
 
-    Let `optional` be the number optional parameters in `T`. (The rest parameter
-    is not considered optional.)
+    Let `optional` be the number optional parameters in `Type`. (The rest
+    parameter is not considered optional.)
 
-    Let `hasRest` be true if `T` contains a rest parameter.
+    Let `hasRest` be true if `Type` contains a rest parameter.
 
     Let `optionalArgs` be `arity - required`. This is the number of optional
     parameters that will be provided with arguments at this arity. (It may be
@@ -801,10 +811,10 @@ To generate the parameter list of a function type `T` at arity `arity`:
     true if there are enough arguments left over for the rest parameter.
 
 2.  If `arity < required`, there are not enough arguments for this to be a valid
-    call. `T` has no parameter list at this arity. Abort.
+    call. `Type` has no parameter list at this arity. Abort.
 
 3.  If `optionalArgs > optional` and `hasRest` is false then there are too many
-    arguments for this to be a valid call. `T` has no parameter list at this
+    arguments for this to be a valid call. `Type` has no parameter list at this
     arity. Abort.
 
 4.  At this point, we know the arity is valid. Now we can figure out which
