@@ -17,12 +17,12 @@ three changes to parameter lists:
 ### Allow passing positional arguments after named arguments
 
 Named parameters are great when they are all optional and any combination of
-them is valid (1). Positional parameters are great when the argument is
-mandatory or the name is obvious from the method being called (2). Finally, code
-tends to be easiest to read when the largest argument expression is last (3).
+them is valid. Positional parameters are great when the argument is mandatory or
+the name is obvious from the method being called. Finally, code tends to be
+easiest to read when the largest argument expression is last. In particular, if
+a method takes a big function literal, collection, or other large nested
+expression as an argument, you really want it to hang off the end.
 
-In particular, if a method takes a big function literal, collection, or other
-large nested expression as an argument, you really want it to hang off the end.
 Unfortunately, these three constraints often conflict:
 
 ```dart
@@ -71,11 +71,11 @@ DefaultTextStyle(
 
 ### Allow both optional positional and optional named parameters
 
-At the point that optional parameters were first designed, we knew this was an
-arbitrary limitation. Today, DDC's current ABI may make it a challenge to
-support both, but it's likely we can fix this.
+At the point that optional parameters were first designed, the language team
+knew this was an arbitrary limitation. Today, DDC's current ABI may make it a
+challenge to support both, but it's likely we can fix this.
 
-The current restriction this causes a couple of problems:
+This restriction causes a couple of problems:
 
 *   **If you want to give a name to one optional parameter, you have to name
     *all* of them.** This can lead to not-very-useful parameter names like
@@ -104,17 +104,16 @@ pure win as anything in languages ever is.
 
 ### Support rest parameters
 
-Almost every language has a way to pass a unbound series of arguments of the
-same type to a method without having to explicitly create a list or
-array&mdash;usually called "varargs", "variadic parameters" or "rest
-parameters". Dart doesn't, which leads to a large amount of boilerplate
-`children: [ ... ]` code in Flutter widgets. This is something Flutter users
-often complain about.
+Almost every language has a way to pass an unbound series of arguments to a
+function without having to explicitly create a list or array&mdash;usually
+called "varargs", "variadic parameters" or "rest parameters". Dart doesn't,
+which leads to a large amount of boilerplate `children: [ ... ]` code in Flutter
+widgets. This is something Flutter users often complain about.
 
-Because Dart doesn't support this and JavaScript does, we have to [work around
-it in interop][js rest].
+Because Dart doesn't support rest parameters and JavaScript does, we have to
+[work around it in interop][js rest].
 
-Having real support for rest params also potentially unlocks some performance
+Real support for rest params also potentially unlocks some performance
 improvements since the compiler can usually tell that the synthesized list is
 not mutated elsewhere.
 
@@ -143,11 +142,11 @@ parameters need to have different types. At that point, you are usually forced
 to make both named and throw an exception if the user passes the wrong one.
 
 Individually, these are all fairly minor changes. But given how much
-code&mdash;especially Flutter UI code is composed of method invocation, these
-changes can have a large impact on the clarity and brevity of a user's program.
-They probably won't move the needle&mdash;we should look into more ambitious
-features in addition to these&mdash;but they eliminate a large number of small
-frictions.
+code&mdash;especially Flutter UI code&mdash;is composed of method invocation,
+these changes can have a large impact on the clarity and brevity of a user's
+program. They probably won't move the needle&mdash;we should look into more
+ambitious features in addition to these&mdash;but they eliminate a large number
+of small frictions.
 
 Since these changes are intertwined in the same corner of the language's
 semantics and grammar, this proposal addresses them all together.
@@ -163,7 +162,7 @@ introduction to the proposed solutions to the above problems. Two of the
 
 We simply remove the language restrictions that prohibit doing that. There are
 some interesting technical questions about how that affects calling conventions,
-but the syntax and semantics are obvious.
+but the syntax and semantics are straightforward.
 
 ### Non-trailing optional parameters
 
@@ -188,12 +187,11 @@ int random([int min = 0], int max) {
 When calling a method where the optional parameters aren't necessarily at the
 end, we rely on the arity of the call to determine which parameters are bound
 and which aren't. Once you determine which parameters will get bound and which
-won't, arguments are bound to parameters from left to right.
-
-With the above, the valid calls are:
+won't, arguments are bound to parameters from left to right. With the above, the
+valid calls are:
 
 ```dart
-random(10); // Uses the default for min and binds 10 to max.
+random(10);    // Uses the default for min and binds 10 to max.
 random(5, 15); // Binds 5 to min and 15 to max.
 ```
 
@@ -203,9 +201,9 @@ use.
 
 ### Support rest parameters
 
-To support rest parameters, we add one more allowed section to a parameter list.
-A rest parameter is an (optional) type followed by `...` and then a parameter
-name. For example:
+To support rest parameters, we define one more kind of positional section in a
+parameter list. A rest parameter is an (optional) type followed by `...` and
+then a parameter name. For example:
 
 ```dart
 runProcess(String command, List<String> ...arguments) { ... }
@@ -274,7 +272,7 @@ If/when we later add support non-nullable types, I think we should revisit
 parameters and consider using the nullability of a parameter to imply
 optionality too. In the meantime, this proposal takes a conservative approach.
 
-### Support rest parameters
+### Rest parameters
 
 Coming up with a syntax for rest parameters is a little challenging. Some
 languages use a keyword (`params` in C#, `vararg` in Kotlin), some use a `*`
@@ -309,7 +307,8 @@ void concat(List<String> ...arguments) { ... }
 
 Technically, that *is* the same as the Java syntax, except for the space. That's
 probably good for familiarity. But note that you are responsible for choosing an
-appropriate collection type.
+appropriate collection type. The `...` does not implicitly promote `String` to
+`List<String>`.
 
 There is a valid argument that `*` is a better choice for Dart given `sync*` and
 `yield*`. A user study would help us choose between the two. I could go either
@@ -464,8 +463,8 @@ sub(int a, bool b, String c, double d)
 ```
 
 It adds *another* overload, but that's OK. (This is also why adding an
-*optional* parameter to a superclass method is a breaking change. It adds a new
-overload that the subclass overrides may not all support.)
+*optional* parameter to a *superclass* method is a breaking change. It adds a
+new overload that the subclass overrides may not all support.)
 
 This "overload" model will help us reason through the changes in this proposal.
 
@@ -476,15 +475,14 @@ semantics around positional and named parameters in Dart are disjoint.
 (This is unlike most languages where you can pass any parameter by name or
 position.) To support both, we just do both in a single function.
 
-From an implementation perspective, there are possibly some challenges. I
-believe DDC's function calling convention (and thus its JS interop API) takes
-advantage of the fact that a function cannot have both optional positional and
-named parameters, and that the optional positional parameters are all at the
-end.
+From an implementation perspective, there may be challenges. I believe DDC's
+function calling convention (and thus its JS interop API) takes advantage of the
+fact that a function cannot have both optional positional and named parameters,
+and that the optional positional parameters are all at the end.
 
 Other implementations may have other challenges fitting both kinds of optional
-arguments into their calling convention. We'll have to work with those teams to
-see how much of an issue this is.
+arguments into their calling convention. We'll work with those teams to see how
+much of an issue this is.
 
 ### Interleaving required and optional positional parameters
 
@@ -509,10 +507,9 @@ function(String b)
 function(int a, String b)
 ```
 
-The type of the first parameter depends on which overload is chosen. However,
-this is not a fatal flaw. The operations we need to perform on function types (details below) are more complex but still tractable.
-
-We do have to figure out how to handle cases where optional arguments are interleaved and not all are provided. Consider:
+The type of the first parameter depends on which overload is chosen. We also
+have to figure out how to handle cases where optional arguments are interleaved
+and not all are provided. Consider:
 
 ```dart
 function([int a], int b, [int c], int d, [int e], int f)
@@ -524,79 +521,18 @@ If you call it like:
 function(1, 2, 3, 4)
 ```
 
-Which parameters get bound to arguments and which use their defaults? We can
-actually continue to use the same rule Dart has today: optional parameters are
-given priority from left-to-right. So, if there aren't enough arguments to go
-around, an optional parameter on the left will get one before a parameter on the
-right does.
-
-This does *not* mean that arguments are bound in priority order. We use priority
-to determine, statically, *which* parameters will get argument. Once that's
-done, arguments are bound to parameters strictly from left-to-right as they are
-today.
-
-So, in the above example, the parameters are bound to:
-
-```
-a: 1, b: 2, c: null, d: 3, e: null, f: 4
-```
-
-I realize that's somewhat confusing, but this is a *very* pathological example.
-In simple cases, I think the behavior does about what you expect. The important
-parts are:
-
-*   We can determine which "overload" is chosen, and thus the types of each
-    parameter by looking at just the arity of the invocation, which is
-    statically known.
-*   We don't need to use the types of any parameters to determine how optional
-    parameters are bound.
-*   Existing Dart functions continue to behave the same as they do today.
+Which parameters get bound to arguments and which use their defaults? This turns
+out to not be intractable and not much more complex than the current rules. The
+details are below.
 
 ### Rest parameters
 
-It seems like rest parameters would throw the above model out the window. They
-introduce an effectively infinite number of "overloads" to a function. However,
-once you get past a single rest argument, every overload beyond that has the
-same structure&mdash;you just insert more of the same argument type at a certain
-position.
+We'll get into how arguments are bound to rest parameters below. Assuming a set
+of arguments *has* been correctly bound to a rest parameter, then what?
 
-What about mixing rest parameters and optional positional parameters in the same
-function? For example:
-
-```dart
-function(int a, [int b], List<int> ...c, int d, [int e])
-```
-
-(Granted, again, no one would write reasonable code like this. But if the
-proposal can handle it, it can handle the code people *do* write without
-breaking a sweat.)
-
-We use a similar principle to the previous section. Now we have three levels of
-priority when deciding which parameters will capture arguments:
-
-1. Required parameters take highest priority.
-2. If there are still arguments left, optional parameters take priority, in
-   order from left to right.
-3. If there are still arguments left, then the rest parameter takes the rest
-   (hence the name).
-
-Again, prioritization is about determine *which* parameters will have arguments.
-Once that's determined, arguments are assigned strictly left to right. Here's
-how a few calls to the above function get bound:
-
-```dart
-function(1, 2) // a: 1, b: null, c: [], d: 2, e: null
-function(1, 2, 3) // a: 1, b: 2, c: [], d: 3, e: null
-function(1, 2, 3, 4) // a: 1, b: 2, c: [], d: 3, e: 4
-function(1, 2, 3, 4, 5) // a: 1, b: 2, c: [3], d: 4, e: 5
-function(1, 2, 3, 4, 5, 6) // a: 1, b: 2, c: [3, 4], d: 5, e: 6
-```
-
-This lets us decide which positional arguments get shunted into the rest
-parameter. The implementation then takes those arguments and bundles them into a
-*rest parameter object*. (An optimized implementation may not actually
-materialize the object, but from the user's perspective, it conceptually
-exists).
+The implementation takes those arguments and bundles them into a *rest object*.
+(An optimized implementation may not actually materialize the object, but from
+the user's perspective, it conceptually exists).
 
 Since the implementation creates the object, there are some restrictions on what
 types are allowed for a rest parameter. It is a compile-time error for a rest
@@ -619,7 +555,8 @@ To that end, inside the body of the function, the object:
     support mutability.
 
 *   If all of the rest arguments come from a single spread argument, the rest
-    parameter object *may* be the original object was spread. In other words:
+    parameter object *may* be the original object that was spread. In other
+    words:
 
     ```dart
     var restObj;
@@ -632,9 +569,10 @@ To that end, inside the body of the function, the object:
     print(identical(list, restObj));
     ```
 
-    It is implementation-defined when this choose to print "true" or "false".
-    Basically, if you are taking a rest parameter, assume you can read from it
-    inside the body of the function but otherwise treat it as ephemeral.
+    It is implementation-defined whether and when this chooses to print "true"
+    or "false". Basically, if you are taking a rest parameter, assume you can
+    read from it inside the body of the function but otherwise treat it as
+    ephemeral.
 
 ### Spread arguments
 
@@ -673,79 +611,249 @@ var more = [5, 6];
 function("string", 1, ...args, 4, ...more, 1.2);
 ```
 
-### Binding arguments to parameters
+### Calling functions
 
-The above is a still pretty hand-wavey, so here's a more precise description of
-how a given list of positional arguments are bound to a function's required,
-optional, and rest parameters. (Named arguments work as normally and are not described here.)
+Dart is mostly a statically-compiled language and is very focused on
+performance. A very large fraction of execution time is spent calling functions
+and binding arguments to parameters. If we introduce too much dynamism to that,
+we can slow down all Dart code.
 
-It happens in two phases. First is a static resolution process. It determines if
-a list of arguments is valid for the signature of the method being invoked, and
-which arguments are bound to which parameters. It only needs access to
-information known statically from the method signature and the callsite:
+To avoid that, even as we make parameter signatures more flexible, we want to be
+able to do as much of the resolution and binding logic&mdash;determining which
+argument ends up associated with which parameter position&mdash;at compile time.
+That means the binding logic should only on information known statically: the
+number of positional arguments in the invocation, and the static type of the
+function being called.
 
-*   The parameter list of the method. For each parameter, its name and whether
-    it is optional, a rest parameter, or neither.
-*   `argCount`, the number of positional arguments.
-*   The static types of each argument and parameter, for type-checking.
+#### Binding order
 
-1.  **Bind arguments.**
+When there aren't enough arguments for all of the parameters a function expects,
+some parameters end up unfilled (and use their default value). That gets more
+complex when optional parameters can freely interleave required parameters. Even
+more when a parameter list can contain both optional and rest parameters.
 
-    2.  Let `required` be the number of required positional parameters.
+To handle that, parameters are prioritized. Required parameters take highest
+priority, then optional, then rest (hence the name).
 
-    3.  Let `optional` be the number of optional positional parameters.
+Priority determines *which* parameters get arguments, but arguments are not
+bound in priority *order*. In current Dart, since optional parameters always
+follow required ones and there are no rest parameters, priority order and
+argument order are the same&mdash;the leftmost parameters will always be the
+ones that get arguments.
 
-    4.  If `required > argCount`, then there are not enough arguments for all
-        the required parameters. Compile-time error.
+This is not always true with this proposal. Given:
 
-    5.  If there is not a rest parameter and `argCount > required + optional`,
-        then there are too many arguments. Compile-time error.
+```dart
+function(int a, [int b], List<int> ...c, int d, [int e])
+```
 
-    6.  Let `restArgs` be `argCount - required - optional`. (It may be less than
-        zero. That's OK.)
+(No one would write reasonable code like this. But if the proposal can handle
+it, it can handle the code people *do* write without breaking a sweat.)
 
-    7.  At this point, we know the invocation is valid. Now we can assign
-        argument positions to parameters. Start with the first positional
-        argument. For each positional parameter:
+Here is how various numbers of arguments get bound to parameters:
 
-        1.  If the parameter is required or is optional and we have not run out
-            of arguments yet:
+```dart
+//       a  b  c     d  e
+function(1,          2)     // a: 1, b: null, c: [],     d: 2, e: null
+function(1, 2,       3)     // a: 1, b: 2,    c: [],     d: 3, e: null
+function(1, 2,       3, 4)  // a: 1, b: 2,    c: [],     d: 3, e: 4
+function(1, 2, 3,    4, 5)  // a: 1, b: 2,    c: [3],    d: 4, e: 5
+function(1, 2, 3, 4, 5, 6)  // a: 1, b: 2,    c: [3, 4], d: 5, e: 6
+```
 
-            1.   If the current argument is a rest argument, compile-time error.
+As you add more arguments, first all the optionals get filled in. Then once
+those are done, the rest parameter gets populated. Note, however that argument
+values are still always bound strictly left to right.
 
-            2.   Otherwise, bind the current argument to the parameter and
-                 advance to the next argument.
+This is expressed mechanically by defining a *binding order* for each parameter:
 
-        2.  If the parameter is the rest parameter:
+*   The binding order of a required parameter is its position in the list of
+    required parameter.
+*   The binding order of an optional parameter is its position in the list of
+    required parameter plus the number of required parameters.
+*   The binding order of the rest parameter is the number of parameters minus
+    one.
 
-            1.  If `restArgs` is greater than zero, then bind that many
-                arguments to the rest parameter and advance past them. If any of
-                them are spread arguments, note that they need to be unpacked.
+So, in the above example, the binding orders are:
 
-            2.  Otherwise, the rest parameter gets no arguments and will be an
-                empty list.
+```dart
+//           0       2                4      1       3
+function(int a, [int b], List<int> ...c, int d, [int e])
+```
 
-        3.  Otherwise, the parameter is not bound to an argument.
+#### Binding arguments to parameters
 
-3.  **Type check.** Now that we have bound each argument to a parameter, type
-    check them as usual.
+With the binding order defined the process to map a list of positional arguments
+to the parameter list of a function is fairly straightforward, even when taking
+into account optional and rest parameters.
 
-This either produces a compile-time error in which case the call is invalid, or
-it produces a binding that maps argument positions to parameters.
+1.  Let `required` be the list of required positional parameters.
 
-At runtime, there isn't much left to do:
+2.  Let `optional` be the list of optional positional parameters.
 
-1.  For each parameter:
+3.  Let `argCount` be the number of positional arguments.
 
-    1.  If an argument position is bound to the parameter, use that value.
+4.  If `argCount < required`, then there are not enough arguments for all
+    the required parameters. Compile-time error.
 
-    2.  Otherwise, use the parameter's default value.
+5.  **Handle rest and spread parameters.** If there is a rest parameter:
 
-Another way to say all this is that the compiler should be able to desugar the
-call to a straight series of positional arguments and an explicitly reified
-collection for the rest parameter.
+    1.  Let `restCount` be the `argCount -required.length - optional.length`.
+        This is the number of extra arguments that will get bound to the rest
+        parameter. It may be negative.
+
+    2.  If `restCount` is non-negative, then:
+
+        1.  Let `restParam` be the index of the rest parameter in the list of
+            positional parameters, if there is none.
+
+        2.  Extract the rest arguments from `restParam` to `restParam +
+            restCount` and replace them with the result. (See below.)
+
+        Else (no rest arguments):
+
+        1.  Bind `const List<Object>[]` to the rest parameter.
+
+    Else (no rest parameter):
+
+    1.  If `argCount > required + optional`, then there are too many arguments.
+        Compile-time error.
+
+6.  If there are any remaining spread arguments, it means they weren't bound to
+    a rest parameter. Compile-time error.
+
+7.  **Assign arguments to parameters.** At this point, we know the invocation is
+    valid. Now we can assign argument positions to parameters. Start with the
+    first positional argument. For each positional parameter:
+
+    1.  If the binding order of the parameter is less than the number of
+        positional arguments (after mutating the list to handle the rest args
+        above):
+
+        1.  Bind the parameter to the current argument, and advance to the next
+            argument.
+
+        Else:
+
+        1.  Bind the parameter's default value to the parameter.
+
+8.  **Bind named parameters.** Do the normal Dart logic for handling named
+    arguments and parameters.
+
+9.  **Type check.** Now that we have bound each argument to a parameter, type
+     check them as usual.
+
+#### Extracting rest arguments
+
+If the argument list contains more arguments than there are required and
+optional parameters, then we have some elements for the rest argument. Some of
+them may even be spread arguments.
+
+For example, given this:
+
+```dart
+function(int a, List<String> strings, num b)
+```
+
+If you call it like this:
+
+```dart
+var tu = ["t", "u"];
+var wx = ["w", "x"];
+function(1, "s", ...tu, "v", ...wx, 2.3);
+```
+
+We have six arguments (two of which are spread). Since the function takes two
+non-rest parameters, that means four argument positions will go to the rest
+parameter. Since the rest parameter only gets elements after all other
+parameters are filled in, we know the index of the first rest argument is the
+same as the index of the rest parameter in its parameter list (1). So, in the
+above example, we extract:
+
+```dart
+// pos:  0  1    2      3    4      5
+// rest:   [1    2      3    4    ]
+function(1, "s", ...tu, "v", ...wx, 2.3);
+```
+
+We create a new empty list, then walk through the list of rest arguments. If the
+argument is not a spread, we add it to the new list. Otherwise, we iterate over
+it and add each element to the new list. Finally, we replace the spread
+arguments in the original argument list with this new list:
+
+```dart
+// pos:  0  1    2      3    4      5
+var rest = ["s", "t", "u", "v", "w", "x"];
+function(1, rest, 2.3);
+```
+
+Now we know the argument list has no more elements than there are parameters.
+More precisely:
+
+1.  Create a *rest object* (see above for details on its type).
+
+2.  For each argument in the list of rest arguments:
+
+    1.  If the argument is a spread argument:
+
+        1.  If the static type of the argument does not implement `Iterable`
+            (and is not `dynamic`), compile-time error.
+
+        2.  If the static type of the argument implements `Iterable<T>` for a
+            `T` that is not assignable to the rest object's element type,
+            compile-time error.
+
+        3.  Spread the argument using `iterator`. For each returned element, add
+            it to the rest object.
+
+        Else (non-spread argument):
+
+        1.  Add it to the rest object.
+
+4.  Remove the rest elements from the argument list and replace them with the
+    rest object.
+
+**TODO: Be more precise about specifying argument expression evaluation order
+and when spread expressions are evaluated.**
 
 ### Function subtyping
+
+Dart supports calling functions dynamically when nothing is known statically
+about the type of the function being called. Even with static types, the runtime
+type of the actual function called may be a subtype of the static type of the
+invocation.
+
+It is profoundly confusing to users if those don't all behave the same. For
+example, say you have:
+
+```dart
+random([int min = 0], int max) => print("$min - $max");
+
+random(10); // "0 - 10".
+takeTwo(3, 8); // "3 - 8".
+```
+
+Great. We could conceivably consider that function to be a valid subtype of
+`Function(int a, [int b])`. After all, they both take either one or two
+parameters. But consider what happens when you invoke the former through a
+variable with the latter's type:
+
+```dart
+Function(int a, [int b]) fn = random;
+fn(10);
+fn(3, 8);
+```
+
+We want to be able to *statically* determine which arguments get bound to which
+parameters and thus which parameters use their default. Based on the *static*
+type of `fn`, we would expect `fn(10)` to bind 10 to the first parameter and use
+the default for the second. But that's exactly the opposite of how `random()`
+behaves if you call it directly.
+
+To avoid these cases, we restrict the rules around subtyping. A function type is
+only a subtype of another it supports all of the same invocations *and they all
+bind the same argument positions to the same parameter positions*. In practice,
+this means the subtype rules are pretty similar to Dart's current rules.
 
 A function type contains a (possibly empty) ordered list of *positional
 parameters*. Each positional parameter has a type and may be optional or
@@ -757,85 +865,54 @@ I'm ignoring generic type arguments because they aren't affected by this
 proposal. To determine if function type `Type` is a subtype of function type
 `Supe`:
 
-1.  Let `required` be the number of required positional parameters in `Supe`.
+1.  If `Supe` has more positional parameters than `Type`, `Type` is not a
+    subtype. It needs to accept at least every parameter that `Super` accepts.
 
-    Let `positional` be the total number positional parameters in `Supe` &mdash;
-    required, optional, and rest.
+2.  For each parameter position in `Supe`:
 
-    It is valid to call `Supe` with anywhere from `required` to `positional`
-    positional arguments (or more if there is a rest parameter, but we can
-    ignore more than one of those).
-
-    For each arity `arity` in that range:
-
-    1.  Get the parameter list used for `Supe` at arity `arity` (see below).
-
-    2.  Get the parameter list used for `Type` at arity `arity`. If it does not
-        have a valid one, `Type` is not a subtype.
-
-    3.  Otherwise, for each corresponding pair of parameters `pType` and `pSupe`
-        in the parameter lists:
+    1.  Let `pSupe` be the parameter at that position in `Supe`. Let `pType` be
+        the parameter at that position in `Type`.
 
         1.  If `pSupe` is not a subtype of `pType`, `Type` is not a subtype.
-            This is the usual contravariant parameter subtype rule.
+            This is the usual contravariant parameter rule.
 
-        2.  If `pType` is a rest parameter and `pSupe` is not, or vice versa,
-            `Type` is not a subtype.
+        2.  If `pSupe` is optional and `pType` is not, or vice versa, `Type` is
+            not a subtype.
 
-2.  It the return type of `Type` is not a subtype of the return type of `Supe`,
+        3.  If `pSupe` is rest and `pType` is not, or vice versa, `Type` is
+            not a subtype.
+
+3.  If `Supe` has a rest parameter and `Type` has more positional parameters
+    than `Supe`, `Type` is not a subtype. You can't "add" extra parameters when
+    the supertype already has a rest parameter, because those additional
+    parameters will consume arguments and shift which arguments get bound to
+    the rest parameter.
+
+3.  For each parameter position in `Type` beyond the last parameter position in
+    `Supe` (i.e. for the extra parameters `Supe` has at the end):
+
+    1.  If the parameter is required, `Type` is not a subtype. You can only add
+        optional parameters and/or a rest parameter.
+
+4.  It the return type of `Type` is not a subtype of the return type of `Supe`,
     `Type` is not a subtype.
 
-3.  Apply the existing function subtyping rules for named parameters.
+5.  Apply the existing function subtyping rules for named parameters.
 
-4.  If we get here, `Type` is a subtype.
+6.  If we get here, `Type` is a subtype.
 
-#### Parameter list at arity
+This is basically the same subtype logic Dart currently has except that:
 
-To generate the parameter list of a function type `Type` at arity `arity`:
+*   It handles optional parameters appearing before required parameters. Since
+    Dart already requires each optional parameter in a supertype to be
+    optional in a subtype, this is a safe extension of that.
 
-1.  Let `positional` be the total number positional parameters in `Type` &mdash;
-    required, optional, and rest.
+*   It handles rest parameters. For a function type to be a subtype, any rest
+    parameters must line up.
 
-    Let `required` be the number of required positional parameters in `Type`.
-
-    Let `optional` be the number optional parameters in `Type`. (The rest
-    parameter is not considered optional.)
-
-    Let `hasRest` be true if `Type` contains a rest parameter.
-
-    Let `optionalArgs` be `arity - required`. This is the number of optional
-    parameters that will be provided with arguments at this arity. (It may be
-    larger than the total number of optional parameters, but that's OK.)
-
-    Let `hasRestArgs` be true iff `arity - required - optionalArgs > 0`. This is
-    true if there are enough arguments left over for the rest parameter.
-
-2.  If `arity < required`, there are not enough arguments for this to be a valid
-    call. `Type` has no parameter list at this arity. Abort.
-
-3.  If `optionalArgs > optional` and `hasRest` is false then there are too many
-    arguments for this to be a valid call. `Type` has no parameter list at this
-    arity. Abort.
-
-4.  At this point, we know the arity is valid. Now we can figure out which
-    parameter will be used at each position. Create an empty list of parameters,
-    `result`. For each parameter in `positional`:
-
-    1.  If the parameter is required add it to `result`.
-
-    2.  If the parameter is optional and `optionalArgs > 0`:
-
-        1.  Add it to `result`.
-
-        2.  Decrement `optionalArgs`. In cases where there is enough arity for
-            some but not all optional parameters, this ensures they are filled
-            left-to-right.
-
-    3.  Otherwise, the parameter is the rest parameter. If `hasRestArgs:`
-
-        1.  Add the parameter to `result`.
-
-5.  Return the resulting list of parameters.
+*   It makes it invalid for a subtype to add any optional parameters if the
+    supertype has a rest parameter. Since no functions have rest parameters in
+    Dart today, this is also safe.
 
 A working prototype of the parameter binding and subtyping logic is
 [here][prototype].
@@ -848,7 +925,7 @@ valid and fit within a subset of what is now expressible.
 
 In order to take advantage of these features, API designers may want to turn
 some named parameters (think "child" in Flutter) into positional parameters or
-vice versa. That is a breaking change, but can be phased in by supporting both
+vice versa. That *is* a breaking change, but can be phased in by supporting both
 for a while:
 
 ```dart

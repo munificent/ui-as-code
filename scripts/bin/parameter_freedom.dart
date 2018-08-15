@@ -208,7 +208,7 @@ void _testSubtype(String other, bool expect) {
 }
 
 bool isSubtype(Signature a, Signature b) {
-  // The supertype must have at least as many parameters.
+  // The subtype must have at least as many parameters.
   if (a.positional.length > b.positional.length) return false;
 
   // Every parameter in the supertype must match the one in the subtype.
@@ -253,6 +253,59 @@ bool objectsEqual(Object a, Object b) {
 }
 
 Map<String, Object> bind(List<Object> arguments, Signature signature) {
+  error(String message) => {"error": message};
+  var bindings = <String, Object>{};
+
+  // The required parameters.
+  var required =
+      signature.positional.where((param) => param.isRequired).toList();
+
+  // The optional parameters.
+  var optional =
+      signature.positional.where((param) => param.isOptional).toList();
+
+  // The position of the rest parameter or -1 if there is none.
+  var restParam = signature.positional.indexWhere((param) => param.isRest);
+
+  // How many arguments are left for the rest parameter (if any).
+  var providedRest = arguments.length - required.length - optional.length;
+
+  int bindingOrder(Parameter param) {
+    if (param.isRequired) return required.indexOf(param);
+    if (param.isOptional) return optional.indexOf(param) + required.length;
+    return signature.positional.length - 1;
+  }
+
+  if (arguments.length < required.length) {
+    return error("Not enough positional arguments.");
+  }
+
+  if (providedRest > 0 && restParam == -1) {
+    return error("Too many positional arguments.");
+  }
+
+  if (restParam != -1) {
+    if (providedRest > 0) {
+      var restArgs = arguments.sublist(restParam, restParam + providedRest);
+      arguments.replaceRange(restParam, restParam + providedRest, [restArgs]);
+    } else {
+      bindings[signature.positional[restParam].name] = [];
+    }
+  }
+
+  assert(arguments.length <= signature.positional.length);
+
+  var argIndex = 0;
+  for (var param in signature.positional) {
+    if (bindingOrder(param) < arguments.length) {
+      bindings[param.name] = arguments[argIndex++];
+    }
+  }
+
+  return bindings;
+}
+
+Map<String, Object> bindOld(List<Object> arguments, Signature signature) {
   error(String message) => {"error": message};
   var bindings = <String, Object>{};
 
