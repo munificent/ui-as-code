@@ -852,8 +852,10 @@ behaves if you call it directly.
 
 To avoid these cases, we restrict the rules around subtyping. A function type is
 only a subtype of another it supports all of the same invocations *and they all
-bind the same argument positions to the same parameter positions*. In practice,
-this means the subtype rules are pretty similar to Dart's current rules.
+bind the same argument positions to the same parameter positions*. In other
+words, all corresponding parameters need to have the same binding order. In
+practice, this means the subtype rules are pretty similar to Dart's current
+rules.
 
 A function type contains a (possibly empty) ordered list of *positional
 parameters*. Each positional parameter has a type and may be optional or
@@ -876,11 +878,25 @@ proposal. To determine if function type `Type` is a subtype of function type
         1.  If `pSupe` is not a subtype of `pType`, `Type` is not a subtype.
             This is the usual contravariant parameter rule.
 
-        2.  If `pSupe` is optional and `pType` is not, or vice versa, `Type` is
-            not a subtype.
-
         3.  If `pSupe` is rest and `pType` is not, or vice versa, `Type` is
             not a subtype.
+
+        2.  If `pSupe` is optional and `pType` is not, `Type` is not a subtype.
+            A subtype cannot turn an optional parameter required because it
+            would be possible to call it through the supertype and not pass
+            the argument.
+
+        3.  If the binding order of `pSupe` is not the same as the binding
+            order of `pType`, `Type` is not a subtype. This ensures you can't
+            get a different argument order when you invoke the same function
+            through a supertype as through a subtype.
+
+            *The effective restriction is that required parameters in the
+            supertype must usually stay required in the subtype. However, a
+            subtype can make one or more required parameters optional if all
+            optional parameters in the supertype are after all of its required
+            parameters. It's OK for a rest parameter to be anywhere in there.
+            This follows the existing Dart rules.*
 
 3.  If `Supe` has a rest parameter and `Type` has more positional parameters
     than `Supe`, `Type` is not a subtype. You can't "add" extra parameters when

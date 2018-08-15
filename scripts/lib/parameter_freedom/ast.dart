@@ -12,6 +12,15 @@ class Signature {
 
   Signature(this.positional, this.named);
 
+  int bindingOrder(Parameter param) {
+    if (param.isRequired) return required.indexOf(param);
+    if (param.isOptional) {
+      return optional.indexOf(param) + required.length;
+    }
+
+    return positional.length - 1;
+  }
+
   String toString() {
     var sections = <Object>[];
     var optionals = <Object>[];
@@ -62,7 +71,7 @@ class Parameter {
     var result = "";
     if (type != null) result = "$type ";
 
-    if (isRest) result += "*";
+    if (isRest) result += "...";
     result += name;
 
     return result;
