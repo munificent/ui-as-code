@@ -756,21 +756,23 @@ when taking into account optional and rest parameters.
 
 5.  **Handle rest and spread parameters.** If there is a rest parameter:
 
-    1.  Let `restCount` be the `argCount -required.length - optional.length`.
+    1.  Let `restCount` be the `argCount - required.length - optional.length`.
         This is the number of extra arguments that will get bound to the rest
         parameter. It may be negative.
 
     2.  If `restCount` is non-negative, then:
 
         1.  Let `restParam` be the index of the rest parameter in the list of
-            positional parameters, if there is one.
+            positional parameters.
 
         2.  Extract the rest arguments from `restParam` to `restParam +
             restCount` and replace them with the result. (See below.)
 
         Else (no rest arguments):
 
-        1.  Bind the rest parameter to `const List<Null>[]`.
+        1.  Bind the rest parameter to an unmodifable empty instance of `List<T>`
+            where `T` is the type specified in the declaration of the rest parameter,
+            if any.
 
     Else (no rest parameter):
 
@@ -889,9 +891,12 @@ proposal. To determine if function type `Type` is a subtype of function type
 2.  For each parameter position in `Supe`:
 
     1.  Let `pSupe` be the parameter at that position in `Supe`. Let `pType` be
-        the parameter at that position in `Type`.
+        the parameter at that position in `Type`, if any.
+        
+        1.  If there is no such parameter in Type, `Type` is not a subtype.
 
-        1.  If `pSupe` is not a subtype of `pType`, `Type` is not a subtype.
+        1.  If the type of `pSupe` is not a subtype of the type of `pType`, 
+            `Type` is not a subtype.
             This is the usual contravariant parameter rule.
 
         3.  If `pSupe` is rest and `pType` is not, or vice versa, `Type` is
@@ -910,8 +915,8 @@ proposal. To determine if function type `Type` is a subtype of function type
             *The effective restriction is that required parameters in the
             supertype must usually stay required in the subtype. However, a
             subtype can make one or more required parameters optional if all
-            optional parameters in the supertype are after all of its required
-            parameters. It's OK for a rest parameter to be anywhere in there.
+            of them occur immediately before the first optional parameter
+            of the supertype. It's OK for a rest parameter to be anywhere in there.
             This follows the existing Dart rules.*
 
 3.  If `Supe` has a rest parameter and `Type` has more positional parameters
@@ -921,7 +926,7 @@ proposal. To determine if function type `Type` is a subtype of function type
     the rest parameter.
 
 3.  For each parameter position in `Type` beyond the last parameter position in
-    `Supe` (i.e. for the extra parameters `Supe` has at the end):
+    `Supe` (i.e. for the extra parameters `Type` has at the end):
 
     1.  If the parameter is required, `Type` is not a subtype. You can only add
         optional parameters and/or a rest parameter.
