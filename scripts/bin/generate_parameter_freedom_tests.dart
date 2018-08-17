@@ -18,7 +18,7 @@ void main(List<String> arguments) {
         if (isSubtype(superSig, subSig)) {
           print("  expectSubtype(\"$subSig\"); // ${bindingSig(subSig)}");
         } else {
-//          print("  expectNotSubtype(\"$subSig\"); // ${bindingSig(subSig)}");
+          print("  expectNotSubtype(\"$subSig\"); // ${bindingSig(subSig)}");
         }
       }
       print("");
