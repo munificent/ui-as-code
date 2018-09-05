@@ -1,29 +1,26 @@
 # Parameter Freedom
 
-Loosen restrictions around positional, optional, and named parameters. Then add
-rest parameters (and a spread operator) so that API authors can define flexible
-expressive parameter lists that free callers from writing useless boilerplate.
+Loosen restrictions around positional, optional, and named parameters. Add rest
+parameters and a spread operator. Let API authors define flexible, expressive
+parameter lists that free callers from writing useless boilerplate.
 
 ## Motivation
 
-For the "UI as code" work, my goal is a holistic package of language changes
-that hang together and harmoniously improve the user experience of the code.
-But, in order to make progress, it's useful to break that package out into
-individual proposals that we can work on independently and incrementally.
+My goal with the "UI as code" work is a holistic set of language changes that
+hang together to improve the user experience of the code. But, in order to make
+progress, it's useful to break that into individual proposals that
+we can work on independently and incrementally.
 
-Every set of features I've considered so inevitably seems to include at least
-three changes to parameter lists:
+Every set of features I've considered so far includes at least three changes to
+parameter lists:
 
 ### Allow passing positional arguments after named arguments
 
-Named parameters are great when they are all optional and any combination of
-them is valid. Positional parameters are great when the argument is mandatory or
-the name is obvious from the method being called. Finally, code tends to be
-easiest to read when the largest argument expression is last. In particular, if
-a method takes a big function literal, collection, or other large nested
-expression as an argument, you really want it to hang off the end.
-
-Unfortunately, these three constraints often conflict:
+If a method takes a big function literal, collection, or other large nested
+expression as an argument, it's easiest to read when that's the last argument in
+the argument list. However, if the method also accepts other named arguments, it
+forces you to make this trailing argument named, even if you don't want it to be
+optional or the name is pointless. For example:
 
 ```dart
 DefaultTextStyle(
@@ -43,9 +40,9 @@ DefaultTextStyle(
 ),
 ```
 
-Here, you want the `child` widget to be the last argument because it's much
-larger that the smaller `style` argument. But it should also be mandatory and
-arguably the `child` name doesn't add much value here.
+Here, you want the child widget to be the last argument because it's larger than
+the `style` argument. But it should also be mandatory and arguably the `child`
+name doesn't add much value.
 
 The problem is a simple syntactic limitation: Dart doesn't let you place
 positional arguments following named ones. Removing that restriction would let
@@ -71,17 +68,15 @@ DefaultTextStyle(
 
 ### Allow both optional positional and optional named parameters
 
-At the point that optional parameters were first designed, the language team
-knew this was an arbitrary limitation. Today, DDC's current ABI may make it a
-challenge to support both, but it's likely we can fix this.
-
-This restriction causes a couple of problems:
+Dart allows optional positional parameters, or optional named ones, but not
+both. When those features were first designed, the language team knew this was
+an arbitrary limitation. This restriction causes a couple of problems:
 
 *   **If you want to give a name to one optional parameter, you have to name
     *all* of them.** This can lead to not-very-useful parameter names like
     `child` and `children`. Because methods taking those have parameters that
-    should be named, and because these parameters are optional too, they have to
-    be named as well, even though the name communicates little.
+    *should* be named, and because these parameters are optional too, they have
+    to be named as well, even though the name communicates little.
 
 *   **Once a method chooses an optional style, it is stuck with it.** You define
     a method that takes an optional positional parameter and ship the API.
@@ -97,14 +92,15 @@ This restriction causes a couple of problems:
 
     (See [issue #21406][].)
 
-Assuming we can solve the ABI problems in DDC, supporting this is as close to a
-pure win as anything in languages ever is.
+DDC today does take advantage of the fact that a method won't have both types of
+optional parameters. Assuming we can solve that, supporting this is as close to
+a pure win as anything in languages ever is.
 
 (See [issue #7056][].)
 
 ### Support rest parameters
 
-Almost every language has a way to pass an unbound series of arguments to a
+Almost every language has a way to pass an unbounded series of arguments to a
 function without having to explicitly create a list or array&mdash;usually
 called "varargs", "variadic parameters" or "rest parameters". Dart doesn't,
 which leads to a large amount of boilerplate `children: [ ... ]` code in Flutter
@@ -122,13 +118,11 @@ not mutated elsewhere.
 ### Non-trailing optional parameters
 
 Dart currently requires all optional positional parameters to be at the end of
-the parameter list. In most APIs, it's fine to force all the optional parameters
-to the end of the argument list. However, sometimes this leads to an unnatural
-parameter order. This is exacerbated by the lack of overloading in Dart.
-
-A classic example is a function that returns a random integer in a given range.
-You can give it one argument to return a number between 0 and that maximum. Or
-you can pass two arguments, a min and max. In Dart, that looks like:
+the parameter list. Sometimes this leads to an unnatural parameter order. A
+classic example is a function that takes a range with an optional minimum. You
+can give it one argument to return a number between the default minimum and the
+given maximum. Or you can pass two arguments, a min and max. In Dart, that looks
+like:
 
 ```dart
 int random(int minOrMax, [int max]) {
@@ -201,8 +195,8 @@ single optional parameter section, usually just a single parameter.
 ### Support rest parameters
 
 To support rest parameters, we define one more kind of positional section in a
-parameter list. A rest parameter is an (optional) type followed by `...` and
-then a parameter name. For example:
+parameter list. A rest parameter is an (optional) type annotation followed by
+`...` and then a parameter name. For example:
 
 ```dart
 runProcess(String command, List<String> ...arguments) { ... }
@@ -258,8 +252,8 @@ DefaultTextStyle(
 )
 ```
 
-It's not a radical difference, but it's hopefully a real improvement. The above
-is pretty hand-wavey so let's see if we can find any devils in the details.
+It's not a radical difference, but it's hopefully a real improvement. In much
+greater detail...
 
 ## Syntax
 
@@ -269,45 +263,33 @@ to come up with something better that covers all of the various use cases.
 
 If/when we later add support non-nullable types, I think we should revisit
 parameters and consider using the nullability of a parameter to imply
-optionality too. In the meantime, this proposal takes a conservative approach.
+optionality too. In the meantime, this proposal takes a more conservative
+approach and builds on the existing syntax.
 
 ### Rest parameters
 
-Coming up with a syntax for rest parameters is a little challenging. Some
-languages use a keyword (`params` in C#, `vararg` in Kotlin), some use a `*`
-(prefix in Ruby and Python, postfix in Scala), and some use `...` (postfix in
-Java, prefix in JavaScript).
+Some languages use a keyword (`params` in C#, `vararg` in Kotlin), some use a
+`*` (prefix in Ruby and Python, postfix in Scala), and some use `...` (postfix
+in Java, prefix in JavaScript).
 
 Since Dart's syntactic legacy most strongly follows JavaScript and Java, I
 prefer `...`. I think it's more familiar and also stands out. If we later add
 support for destructuring assignment, that's the syntax we'd likely want to use
 for rest arguments there.
 
+Since the type annotation is optional, I think we should place it before the parameter name:
+
 Figuring out *where* to place it is a little harder. Scala and Java
 place the modifier on the type:
-
-```java
-void concat(String... arguments) { ... }
-```
-
-```scala
-concat(arguments : String*) = ...
-```
-
-This also implicitly changes the type of the corresponding collection.
-`String...` declares an *array of strings*, not a string. Since putting `async`
-on a function does *not* implicitly wrap the return type in `Future<...>`, that
-didn't feel right to me for Dart (even though I like the brevity). Instead, I
-put it before the parameter name:
 
 ```dart
 void concat(List<String> ...arguments) { ... }
 ```
 
-Technically, that *is* the same as the Java syntax, except for the space. That's
-probably good for familiarity. But note that you are responsible for choosing an
-appropriate collection type. The `...` does not implicitly promote `String` to
-`List<String>`.
+Note that unlike Java and Scala, a rest parameter does not implicity convert the
+type to a collection. You have to explicitly write `List<String>` and not just
+`String`. This is verbose, but consistent with other places in Dart. Marking a
+function `async` does not implicitly wrap its return type in `Future<___>`.
 
 There is a valid argument that `*` is a better choice for Dart given `sync*` and
 `yield*`. A user study would help us choose between the two. I could go either
@@ -355,9 +337,9 @@ I think the following grammar changes cover them:
 ```
 formalParameterList:
   '(' ')' |
-  '(' positionalSections ')' |
-  '(' namedParameters ')' |
-  '(' positionalSections ',' namedParameters ')' |
+  '(' positionalSections ','? ')' |
+  '(' namedParameters ','? ')' |
+  '(' positionalSections ',' namedParameters ','? ')' |
   ;
 
 positionalSections:
@@ -374,9 +356,6 @@ restParameter:
   finalConstVarOrType? '...' identifier
   ;
 ```
-
-*(Remark: Why is it always so awkward to specify optional things separated by
-commas in BNF?)*
 
 It is a compile-time error if a parameter list contains multiple rest
 parameters. It is a compile-time error if a parameter list contains multiple
@@ -399,8 +378,8 @@ Lets you call it like:
 function(1, true, "three")
 ```
 
-When a function type has optional parameter, you can think of it as specifying a
-*set* of "overloaded" signatures, all of which are valid. So:
+When a function type has optional parameters, you can think of it as specifying
+a *set* of "overloaded" signatures, all of which are valid. So:
 
 ```dart
 function(int a, [bool b, String c])
@@ -450,15 +429,15 @@ This "overload" model will help us reason through the changes in this proposal.
 
 ### Supporting both optional positional and optional named parameters
 
-From the language's perspective, this one is easy. The static and dynamic
-semantics around positional and named parameters in Dart are disjoint.
-(This is unlike most languages where you can pass any parameter by name or
-position.) To support both, we just do both in a single function.
+From the language's perspective, this one is easy. The semantics for positional
+and named parameters in Dart are orthogonal. (This is unlike most languages
+where you can pass any parameter by name or position.) To support both, we just
+do both in a single function.
 
-From an implementation perspective, there may be challenges. I believe DDC's
-function calling convention (and thus its JS interop API) takes advantage of the
-fact that a function cannot have both optional positional and named parameters,
-and that the optional positional parameters are all at the end.
+There may be implementation challenges. DDC's function calling convention (and
+thus its JS interop API) takes advantage of the fact that a function cannot have
+both optional positional and named parameters, and that the optional positional
+parameters are all at the end.
 
 Other implementations may have other challenges fitting both kinds of optional
 arguments into their calling convention. We'll work with those teams to see how
@@ -507,10 +486,10 @@ details are below.
 
 ### Rest parameters
 
-The rest parameter, if there is one, only captures arguments if there are more than enough to cover all of the other required and optional arguments.
-
-We'll get into how arguments are bound to rest parameters below. Assuming the
-rest parameter *has* been correctly bound to a set of arguments, then what?
+The rest parameter, if there is one, only captures arguments if there are more
+than enough to cover all of the other required and optional arguments. We'll get
+into how arguments are bound to rest parameters below. Assuming the rest
+parameter *has* been correctly bound to a set of arguments, then what?
 
 The implementation takes those arguments and bundles them into a *rest object*.
 (An optimized implementation may not actually materialize the object, but from
@@ -613,7 +592,7 @@ directly to the rest object. Otherwise, we iterate over it and add each element
 to the rest object. The resulting object implicitly becomes the value that the
 rest parameter is bound to.
 
-So the above code desugars statically to something roughly like:
+So the above code desugars to something roughly like:
 
 ```dart
 var numbers = [3, 4, 5];
@@ -627,6 +606,10 @@ sum(<int>[]
   ...addAll(more)
   ...add(10));
 ```
+
+(You can think of `...` as being the signal to indicate when a rest argument
+should be added using `addAll()` instead of `add()`. Dedicated syntax for that
+avoids the complexity of relying on the type to make the choice.)
 
 ### Binding parameters to arguments
 
@@ -770,7 +753,9 @@ when taking into account optional and rest parameters.
 
         Else (no rest arguments):
 
-        1.  Bind the rest parameter to `const List<Null>[]`.
+        1.  Bind the rest parameter to `const List<T>[]` where `T is the
+            type argument of the rest parameter if the rest parameter has type
+            `List` or `Null` otherwise.
 
     Else (no rest parameter):
 
