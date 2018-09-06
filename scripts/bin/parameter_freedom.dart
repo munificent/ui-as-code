@@ -248,42 +248,34 @@ Map<String, Object> bind(List<Object> arguments, Signature signature) {
   error(String message) => {"error": message};
   var bindings = <String, Object>{};
 
-  // The required parameters.
-  var required =
-      signature.positional.where((param) => param.isRequired).toList();
+  // The number of required parameters.
+  var required = signature.positional.where((param) => param.isRequired).length;
 
-  // The optional parameters.
-  var optional =
-      signature.positional.where((param) => param.isOptional).toList();
-
-  // The position of the rest parameter or -1 if there is none.
-  var restParam = signature.positional.indexWhere((param) => param.isRest);
+  // The number of optional parameters.
+  var optional = signature.positional.where((param) => param.isOptional).length;
 
   // How many arguments are left for the rest parameter (if any).
-  var providedRest = arguments.length - required.length - optional.length;
+  var restArgs = arguments.length - required - optional;
 
-  if (arguments.length < required.length) {
+  if (arguments.length < required) {
     return error("Not enough positional arguments.");
   }
 
-  if (providedRest > 0 && restParam == -1) {
+  if (restArgs > 0 && !signature.positional.any((param) => param.isRest)) {
     return error("Too many positional arguments.");
-  }
-
-  if (restParam != -1) {
-    if (providedRest > 0) {
-      var restArgs = arguments.sublist(restParam, restParam + providedRest);
-      arguments.replaceRange(restParam, restParam + providedRest, [restArgs]);
-    } else {
-      bindings[signature.positional[restParam].name] = [];
-    }
   }
 
   assert(arguments.length <= signature.positional.length);
 
   var argIndex = 0;
   for (var param in signature.positional) {
-    if (signature.bindingOrder(param) < arguments.length) {
+    if (param.isRest) {
+      var rest = [];
+      for (var i = 0; i < restArgs; i++) {
+        rest.add(arguments[argIndex++]);
+      }
+      bindings[param.name] = rest;
+    } else if (signature.priority(param) < arguments.length) {
       bindings[param.name] = arguments[argIndex++];
     }
   }
@@ -1349,1058 +1341,2053 @@ void testSubtypeExhaustive() {
   expectSubtype("int a, int b, int c, int d, [int e]"); // 0,1,2,3,4
 
   signature("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
-  signature("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  signature(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
-  signature("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  signature(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
-  signature("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  signature(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectNotSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectNotSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
-  expectSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectNotSubtype("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
+  expectSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
 
   signature("int a, int b, List ...r, int c, int d, int e"); // 0,1,5,2,3,4
-  expectSubtype("[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
-  expectNotSubtype("[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
-  expectNotSubtype("[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
-  expectNotSubtype("[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
-  expectNotSubtype("[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
-  expectNotSubtype("[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
-  expectNotSubtype("[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
-  expectNotSubtype("[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
-  expectSubtype("int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
-  expectNotSubtype("int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
-  expectNotSubtype("int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
-  expectNotSubtype("int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
-  expectSubtype("int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
-  expectNotSubtype("int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
-  expectSubtype("int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
-  expectNotSubtype("int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
-  expectSubtype("int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
+  expectSubtype(
+      "[int a, int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c, int d], int e"); // 1,2,5,3,4,0
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, [int e]"); // 1,2,5,3,0,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, [int c], int d, int e"); // 2,3,5,4,0,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d, int e]"); // 1,2,5,0,3,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, [int d], int e"); // 2,3,5,0,4,1
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, [int e]"); // 2,3,5,0,1,4
+  expectNotSubtype(
+      "[int a, int b], List ...r, int c, int d, int e"); // 3,4,5,0,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d, int e]"); // 1,0,5,2,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c, int d], int e"); // 2,0,5,3,4,1
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, [int e]"); // 2,0,5,3,1,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, [int c], int d, int e"); // 3,0,5,4,1,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d, int e]"); // 2,0,5,1,3,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, [int d], int e"); // 3,0,5,1,4,2
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, [int e]"); // 3,0,5,1,2,4
+  expectNotSubtype(
+      "[int a], int b, List ...r, int c, int d, int e"); // 4,0,5,1,2,3
+  expectSubtype(
+      "int a, [int b], List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c, int d], int e"); // 0,2,5,3,4,1
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, [int e]"); // 0,2,5,3,1,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, [int c], int d, int e"); // 0,3,5,4,1,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d, int e]"); // 0,2,5,1,3,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, [int d], int e"); // 0,3,5,1,4,2
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, [int e]"); // 0,3,5,1,2,4
+  expectNotSubtype(
+      "int a, [int b], List ...r, int c, int d, int e"); // 0,4,5,1,2,3
+  expectSubtype(
+      "int a, int b, List ...r, [int c, int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c, int d], int e"); // 0,1,5,3,4,2
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, [int e]"); // 0,1,5,3,2,4
+  expectNotSubtype(
+      "int a, int b, List ...r, [int c], int d, int e"); // 0,1,5,4,2,3
+  expectSubtype(
+      "int a, int b, List ...r, int c, [int d, int e]"); // 0,1,5,2,3,4
+  expectNotSubtype(
+      "int a, int b, List ...r, int c, [int d], int e"); // 0,1,5,2,4,3
+  expectSubtype(
+      "int a, int b, List ...r, int c, int d, [int e]"); // 0,1,5,2,3,4
 }

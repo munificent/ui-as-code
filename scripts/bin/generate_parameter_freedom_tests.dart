@@ -43,6 +43,6 @@ Signature makeSig(int bits, bool includeRest) {
 
 String bindingSig(Signature signature) {
   return signature.positional
-      .map((param) => signature.bindingOrder(param))
+      .map((param) => signature.priority(param))
       .join(",");
 }

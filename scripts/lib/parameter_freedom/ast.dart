@@ -12,7 +12,7 @@ class Signature {
 
   Signature(this.positional, this.named);
 
-  int bindingOrder(Parameter param) {
+  int priority(Parameter param) {
     if (param.isRequired) return required.indexOf(param);
     if (param.isOptional) {
       return optional.indexOf(param) + required.length;
