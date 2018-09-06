@@ -24,7 +24,7 @@ bool isSubtype(Signature a, Signature b) {
     if (aParam.isOptional && !bParam.isOptional) return false;
 
     // Binding order must match.
-    if (a.bindingOrder(aParam) != b.bindingOrder(bParam)) return false;
+    if (a.priority(aParam) != b.priority(bParam)) return false;
   }
 
   // If the supertype has a rest parameter, the subtype cannot add any
