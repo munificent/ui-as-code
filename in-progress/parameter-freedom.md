@@ -920,6 +920,12 @@ This extends the existing behavior of evaluating an invocation's arguments
 
 1.  Bind named parameters to named arguments as usual.
 
+**TODO: In the case where the rest parameter receives a single spread argument,
+we could consider binding the rest parameter directly to it. We need to call
+this out explicitly because doing so is user-visible if the iteration has side
+effects. This would avoid forcing implementations to always create an eager copy
+of the spread object.**
+
 These dynamic semantics align with the static semantics. If the static type of
 the function is known and it analyzed without error, then the only runtime
 errors that can be thrown are implicit downcast failures when binding parameters
