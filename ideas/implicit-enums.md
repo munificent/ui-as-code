@@ -42,8 +42,8 @@ more functionality is later needed. If we scope this feature to only true enums,
 that becomes a breaking change.
 
 Here's a pitch then: in a downwards inference context of type `T`, static
-members of type `T` defined on `T` are implicitly added to the scope where `T`
-is declared.
+getters and constants of type `T` defined on `T` are implicitly added to the
+scope where `T` is declared.
 
 **TODO: Maybe allow subtypes of `T` too?**
 
@@ -87,9 +87,9 @@ main() {
 ```
 
 Here, `spade` could refer to either the local variable or the enum case. I think
-user's would be surprised if an identifier declared at the top level of a
-program shadowed a local variable. Also, if the local variable was what you
-wanted, there is no way to access it.
+users would be surprised if an identifier declared at the top level of a program
+shadowed a local variable. Also, if the local variable was what you wanted,
+there is no way to access it.
 
 If we disambiguate by preferring the local variable, you can always access the
 enum case by fully qualifying it (`Suit.spade`). Also, I believe placing the
@@ -134,3 +134,26 @@ So we should be *really* cautious about going in this direction. If we do
 extension methods, then it becomes part of a larger trend in how the language
 works. But on it's own, it couples two up-to-now orthgonal parts of the
 language.
+
+**TODO: Note that this lets you use, say `april` anywhere a DateTime is expected.**
+
+**TODO: This is a breaking change if the names shadow inherited members.**
+
+```dart
+class A {
+  get foo => Enum("A.foo");
+}
+
+class B extends A {
+  method() {
+    Enum enum = foo;
+  }
+}
+
+class Enum {
+  static const foo = const Enum("Enum.foo");
+
+  final String name;
+  const Enum(this.name);
+}
+```

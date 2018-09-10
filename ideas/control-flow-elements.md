@@ -31,22 +31,13 @@ Table(
       ]
     ),
     TableRow(
-      children: [
-        const SizedBox(),
-        Text(recipe.description),
-      ]
+      children: [const SizedBox(), Text(recipe.description)]
     ),
     TableRow(
-      children: [
-        const SizedBox(),
-        Text(recipe.nutrition),
-      ]
+      children: [const SizedBox(), Text(recipe.nutrition)]
     ),
     TableRow(
-      children: [
-        const SizedBox(),
-        Text('Ingredients'),
-      ]
+      children: [const SizedBox(), Text('Ingredients')]
     ),
   ]..addAll(recipe.ingredients.map(
     (RecipeIngredient ingredient) {
@@ -54,10 +45,7 @@ Table(
     }
   ))..add(
     TableRow(
-      children: [
-        const SizedBox(),
-        Text('Steps', style: headingStyle),
-      ]
+      children: [const SizedBox(), Text('Steps', style: headingStyle)]
     )
   )..addAll(recipe.steps.map(
     (RecipeStep step) {
@@ -67,7 +55,7 @@ Table(
 );
 ```
 
-Further, let's say we want to swamp out the nutrition row on Saturdays (that's
+Further, let's say we want to swap out the nutrition row on Saturdays (that's
 our cheat day). This example is actually pretty good already. The author has
 pushed the language to its limit using cascades, `add()`, `addAll()`, `map()`,
 and a helper function to try to keep the whole table in a single big expression.
@@ -88,31 +76,19 @@ Table(
       ]
     ),
     TableRow(
-      children: [
-        const SizedBox(),
-        Text(recipe.description),
-      ]
+      children: [const SizedBox(), Text(recipe.description)]
     ),
     if (isSaturday)
       TableRow(
-        children: [
-          const SizedBox(),
-          Text(recipe.nutrition),
-        ]
+        children: [const SizedBox(), Text(recipe.nutrition)]
       )
     TableRow(
-      children: [
-        const SizedBox(),
-        Text('Ingredients'),
-      ]
+      children: [const SizedBox(), Text('Ingredients')]
     ),
     for (var ingredient in recipe.ingredients)
       _buildItemRow(ingredient.amount, ingredient.description),
     TableRow(
-      children: [
-        const SizedBox(),
-        Text('Steps', style: headingStyle),
-      ]
+      children: [const SizedBox(), Text('Steps', style: headingStyle)]
     ),
     for (var step in recipe.steps)
       _buildItemRow(step.duration ?? '', step.description);
@@ -151,11 +127,13 @@ into the element sequence at that point.
 Both of these can nest since the body of each is itself an element. You could do
 comprehension-like stuff like:
 
+```dart
 var cartesianProduct = [
   for (var row in rows)
     for (var column in row.column)
       if (column != null) column
 ];
+```
 
 ## Others
 
@@ -170,18 +148,25 @@ be able to put any statement in a context where an element is expected.
 
 Allowing any *statement* means expression statements, and then we have to worry
 about which expression statements have their result discarded versus yielded
-into the surrounding element sequence. It also looks really weird to have a bare "argName: value" pair where you expect to see a statement.
+into the surrounding element sequence. It also looks really weird to have a bare
+"argName: value" pair where you expect to see a statement.
 
 And it means dealing with both commas *and* semicolons, mixed together. Ick.
 
-I'm trying to dodge that here by saying the bodies of `if` and `for` in this context are *not* statements. But if users *do* want the full statement grammar, one option would be to let them use a braced block:
+I'm trying to dodge that here by saying the bodies of `if` and `for` in this
+context are *not* statements. But if users *do* want the full statement grammar,
+one option would be to let them use a braced block:
 
-```
+```dart
 var tableCells = [
-  yield* headers;
-  for (var row in rows) {
-    for (var column in row.column) {
-      if (column != null) yield column;
+  firstCell,
+  secondCell,
+  {
+    yield* headers;
+    for (var row in rows) {
+      for (var column in row.column) {
+        if (column != null) yield column;
+      }
     }
   }
 ];
