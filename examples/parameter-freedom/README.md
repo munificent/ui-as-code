@@ -10,3 +10,5 @@ These examples show what Flutter code could look like based on:
     parameter.
 
 *   Using spread arguments where applicable.
+
+[parameter freedom]: https://github.com/munificent/ui-as-code/blob/master/in-progress/parameter-freedom.md

@@ -1,8 +1,8 @@
 Widget build(BuildContext context) {
-  return Card(
-    color: Colors.white,
-    Center(
-      Column(
+  return Card {
+    color = Colors.white;
+    child = Center {
+      child = Column(
         Icon(
           choice.icon,
           size: 128.0,
@@ -12,7 +12,7 @@ Widget build(BuildContext context) {
           choice.title,
           style: textStyle,
         ),
-      ),
-    ),
-  );
+      );
+    };
+  };
 }
