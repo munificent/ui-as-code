@@ -697,8 +697,8 @@ list is valid for the function's parameter list. The binding algorithm does the
 heavy lifting. What's left is to make sure the types of the arguments match the
 parameters and that rest and spread are treated correctly.
 
-1.  If the function's type is `dynamic`, the invocation is not checked
-    statically. Otherwise:
+1.  If the function's type is `dynamic` or `Function`, the invocation is not
+    checked statically. Otherwise:
 
 1.  Run the positional binding algorithm using the function's static type and
     the static types of the positional arguments.
@@ -708,8 +708,10 @@ parameters and that rest and spread are treated correctly.
     1.  If the argument the parameter is bound to is a spread argument,
         compile-time error. You cannot spread to non-rest parameters.
 
-    1.  If the argument's type is not assignable to the parameter's type,
-        compile-time error.
+    1.  If the argument is not assignable to the parameter, compile-time error.
+
+    1.  If the argument is a supertype of the parameter, insert an implicit
+        downcast to the parameter's type.
 
 1.  If there is a rest parameter, for each argument the rest parameter is
     bound to:
@@ -772,35 +774,34 @@ To avoid these cases, we restrict the rules around subtyping. The principle is:
 To determine if function type `Type` is a subtype of function type `Supe`:
 
 1.  If `Supe` has more positional parameters than `Type`, `Type` is not a
-    subtype. It needs to accept at least every parameter that `Super` accepts.
+    subtype. It needs to accept at least every parameter that `Supe` accepts.
 
 1.  For each parameter position in `Supe`:
 
     1.  Let `pSupe` be the parameter at that position in `Supe`. Let `pType` be
         the parameter at that position in `Type`.
 
-        1.  If `pSupe` is not a subtype of `pType`, `Type` is not a subtype.
-            This is the usual contravariant parameter rule.
+    1.  If `pSupe` is not a subtype of `pType`, `Type` is not a subtype. This is
+        the usual contravariant parameter rule.
 
-        1.  If `pSupe` is rest and `pType` is not, or vice versa, `Type` is
-            not a subtype.
+    1.  If `pSupe` is rest and `pType` is not, or vice versa, `Type` is not a
+        subtype.
 
-        1.  If `pSupe` is optional and `pType` is not, `Type` is not a subtype.
-            A subtype cannot turn an optional parameter required because it
-            would be possible to call it through the supertype and not pass
-            the argument.
+    1.  If `pSupe` is optional and `pType` is not, `Type` is not a subtype. A
+        subtype cannot turn an optional parameter required because it would be
+        possible to call it through the supertype and not pass the argument.
 
-        1.  If the binding priority of `pSupe` is not the same as the binding
-            priority of `pType`, `Type` is not a subtype. This ensures you can't
-            get a different argument order when you invoke the same function
-            through a supertype as through a subtype.
+    1.  If the binding priority of `pSupe` is not the same as the binding
+        priority of `pType`, `Type` is not a subtype. This ensures you can't get
+        a different argument order when you invoke the same function through a
+        supertype as through a subtype.
 
-            *The effective restriction is that required parameters in the
-            supertype must usually stay required in the subtype. However, a
-            subtype can make one or more required parameters optional if all
-            optional parameters in the supertype are after all of its required
-            parameters. It's OK for a rest parameter to be anywhere in there.
-            This follows the existing Dart rules.*
+        *The effective restriction is that required parameters in the supertype
+        usually stay required in the subtype. However, a subtype can make one or
+        more required parameters optional if all optional parameters in the
+        supertype are after all of its required parameters. It's OK for a rest
+        parameter to be anywhere in there. This follows the existing Dart
+        rules.*
 
 1.  If `Supe` has a rest parameter and `Type` has more positional parameters
     than `Supe`, `Type` is not a subtype. You can't "add" extra parameters when
@@ -809,7 +810,7 @@ To determine if function type `Type` is a subtype of function type `Supe`:
     the rest parameter.
 
 1.  For each parameter position in `Type` beyond the last parameter position in
-    `Supe` (i.e. for the extra parameters `Supe` has at the end):
+    `Supe` (i.e. for the extra parameters `Type` has at the end):
 
     1.  If the parameter is required, `Type` is not a subtype. You can only add
         optional parameters and/or a rest parameter.
@@ -886,8 +887,10 @@ This extends the existing behavior of evaluating an invocation's arguments
     1.  If the argument the parameter is bound to is a spread argument, throw an
         error. You cannot spread to non-rest parameters.
 
-    1.  If the argument's type is not assignable to the parameter's type,
-        throw an error.
+    1.  If the argument's type is not a subtype of the parameter's type, throw
+        an error. *This can only fail on dynamic invocations. In static calls,
+        the argument type will either be a subtype or a previously-inserted
+        implicit downcast will have failed.*
 
 1.  If there is a rest parameter:
 
@@ -909,6 +912,13 @@ This extends the existing behavior of evaluating an invocation's arguments
             ```dart
             for (T element in argument) addToRest(element);
             ```
+
+            *Note that `argument` could be a user-defined implementation of
+            `Iterable<T>` that modifies the underlying collection or has side
+            effects, so this iteration is potentially user-visible. However,
+            since we iterate over `argument` once and add the individual
+            elements to a new hidden rest object, no modifications to the spread
+            object after this point will affect the rest object.*
 
         1.  Else, add the non-spread value to the rest object by evaluating:
 
