@@ -15,6 +15,6 @@ Widget build(BuildContext context) {
         icon = Icon(Icons.search);
         tooltip = 'Search';
       },
-    ),
+    );
   );
 }
