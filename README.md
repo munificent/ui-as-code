@@ -16,7 +16,23 @@ might not pan out at all.
     how they approach this. Prior art, inspiration, and pitfalls to avoid.
     [JSX][] gets its own page.
 
+*   [Choices][] - High level survey of different approaches to handling
+    conditional execution.
+
+## Proposals
+
+*   [Parameter Freedom][] - Loosen restrictions around positional, optional, and
+    named parameters. Add rest parameters and a spread operator. Let API authors
+    define flexible, expressive parameter lists that free callers from writing
+    useless boilerplate.
+
+*   [Spread Collections][] - Allow the same `...` spread syntax from [Parameter
+    Freedom][] to be used in list and map literals to insert multiple elements.
+
 [motivation]: https://github.com/munificent/ui-as-code/blob/master/Motivation.md
 [constraints]: https://github.com/munificent/ui-as-code/blob/master/Constraints.md
 [research]: https://github.com/munificent/ui-as-code/blob/master/Research.md
 [jsx]: https://github.com/munificent/ui-as-code/blob/master/JSX.md
+[choices]: https://github.com/munificent/ui-as-code/blob/master/Choices.md
+[parameter freedom]: https://github.com/munificent/ui-as-code/blob/master/in-progress/parameter-freedom.md
+[spread collections]: https://github.com/munificent/ui-as-code/blob/master/in-progress/spread-collections.md
