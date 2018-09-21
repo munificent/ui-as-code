@@ -1,13 +1,14 @@
-I have a couple of proposals in flight for "UI as code":
+I have a couple of proposals in progress for "UI as code": [Parameter Freedom][]
+and [Spread Collections][]. Those cover some of the [goals][] around improving
+UI code. Mixing positional and named arguments lets `child` parameters become
+positional. Rest parameters eliminate the boilerplate `children: [ ... ]` code.
+One of the biggest remaining challenges is [conditionally omitting or swapping
+out arguments and child widgets][cond].
 
-- [Parameter Freedom](https://github.com/munificent/ui-as-code/blob/master/in-progress/parameter-freedom.md)
-- [Spread Collections](https://github.com/munificent/ui-as-code/blob/master/in-progress/spread-collections.md)
-
-These help Flutter UI code a decent amount. Mixing positional and named
-arguments lets `child` parameters become positional. Rest parameters eliminate
-the boilerplate `children: [ ... ]` code. One of the biggest remaining
-challenges is conditionally omitting or swapping out arguments and child
-widgets.
+[parameter freedom]: https://github.com/munificent/ui-as-code/blob/master/in-progress/parameter-freedom.md
+[spread collections]: https://github.com/munificent/ui-as-code/blob/master/in-progress/spread-collections.md
+[goals]: https://github.com/munificent/ui-as-code/blob/master/Motivation.md
+[cond]: https://github.com/munificent/ui-as-code/blob/master/Motivation.md#p1-conditionally-omitting-content
 
 Say you have:
 
@@ -63,26 +64,28 @@ Widget build(BuildContext context) {
 ```
 
 This is a large code change for a small conceptual change. The resulting code
-now longer structurally matches the UI it builds.
+no longer structurally matches the UI it builds.
 
 ## Three Paths
 
 To address that issue, I've looked at three broad approaches we could take. I've
 spent a ton of time trying to work through details on each path and see which
-one is best. Unfortunately, none is a clear winner over the others. Each
-involves trade-offs. Since no single one is an obvious winner, I think the best
-way to evaluate them is against each other.
+one is best. Unfortunately, none is universally better than the others. Each
+involves trade-offs. Since no single one is dominates, I think the best way to
+evaluate them is against each other.
 
 To that end, I'll *very roughly* sketch out each here. They are extremely
 hand-wavey but try to fill in the blanks as best you can. The details shouldn't
 matter for the overall intent of this doc.
 
-### Control flow elements
+### [Control flow elements][]
+
+[control flow elements]: https://github.com/munificent/ui-as-code/blob/master/ideas/control-flow-elements.md
 
 This is the smallest (and worst named) proposal. Three places in Dart expect a
-comma-separated sequence "elements". In an argument list, the elements are the
-named, positional, and spread arguments. A list literal's elements are
-expressions. A map literal's elements are `key: value` pairs.
+comma-separated sequence of "elements" of some kind. In a function call, the
+elements are named, positional, and spread arguments. A list literal's elements
+are expressions. A map literal's elements are `key: value` pairs.
 
 In all three places, we extend Dart to allow `if (expression)` followed by an
 element:
@@ -127,9 +130,10 @@ function(
 
 If the condition evaluates to true, the elements in the then clause are
 evaluated and inserted in the argument list or collection literal. Otherwise,
-they are omitted and the else clause is used instead, if present. This gets a
-little weird for positional arguments since omitting one can change the position
-of later arguments. To keep that sane, this is only allowed for rest arguments.
+they are omitted and the else clause is used instead, if present. This gets
+weird for positional arguments since omitting one would change the position of
+later arguments. To keep that sane, this syntax is only allowed for rest
+arguments.
 
 We also allow `for`:
 
@@ -138,8 +142,9 @@ var source = [1, 2, 3];
 var result = [1, for (var i in source) i + 1, 5]; // [1, 2, 3, 4, 5].
 ```
 
-A single-element list using `for` comes passably close to the list comprehension
-syntax of some other languages:
+It expands to as many elements as produced by the iteration. A single-element
+list using `for` comes passably close to the list comprehension syntax of some
+other languages:
 
 ```dart
 var numbers = [for (var i = 0; i < 10; i++) i];
@@ -170,6 +175,8 @@ Widget build(BuildContext context) {
 }
 ```
 
+It's identical to the original code except for the two `if (...)` clauses.
+
 #### Pros
 
 *   **This is the simplest of the three options**, by a large margin. There's
@@ -186,7 +193,9 @@ Widget build(BuildContext context) {
     for statements, but they aren't actually *statements*. The fact that the
     body is an element and not a statement might throw users off.
 
-### Argument block initializers
+### [Argument initializer blocks][]
+
+[argument initializer blocks]: https://github.com/munificent/ui-as-code/blob/master/ideas/named-argument-blocks.md
 
 This idea was initially proposed by Yegor Jbanov. We allow a curly-braced block
 to follow some invocable entity: a class, constructor name, or function. The
@@ -211,7 +220,7 @@ IconButton {
 }
 ```
 
-By putting these assignments inside if statements, you can omit them.
+By putting these assignments inside regular if statements, you can omit them.
 
 ```dart
 IconButton {
@@ -221,7 +230,7 @@ IconButton {
 }
 ```
 
-The main challenge is to extend this to handle unnamed expressions. For lists of
+The main challenge is to extend this to handle unnamed entities. For lists of
 child widgets or other open-ended sequences, we need to be able to handle
 conditions in rest arguments and list literals. I've sunk a lot of time into
 this and still haven't found a great answer. The best I've come up with is:
@@ -285,19 +294,23 @@ new block syntax, but not all of them.
 *   **It's not clear how to extend this to positional parameters.** Using
     `yield` kind of works for rest parameters, but is verbose. It's not clear if
     it makes sense to extend this to list and (even harder) map literals. Note
-    that in the example, I had use an explicit `child` since the syntax doesn't
-    work with optional or required positional parameters.
+    that in the example, I had use an explicit `child = ` since the syntax
+    doesn't support non-rest positional parameters.
 
 ### Markup
 
-When talking about syntax for building UIs, XML is sort of the elephant in the
-room. React has JSX. Scala has XML literals. The idea of embedding an HTML-like
-markup syntax in a programming language arouses very strong feelings in both
-directions.
+When talking about syntax for building UIs, markup is the elephant in the room.
+React has [JSX][]. Scala has [XML literals][]. The idea of embedding an
+HTML-like markup syntax in a programming language arouses [very strong feelings
+in both directions][dsx].
+
+[jsx]: https://github.com/munificent/ui-as-code/blob/master/JSX.md
+[xml literals]: http://tuttlem.github.io/2015/02/24/xml-literals-in-scala.html
+[dsx]: https://github.com/flutter/flutter/issues/15922
 
 For Dart, the best idea I've come up with is that a markup tag is syntactic
-sugar for invoking a constructor or function. The tag's attributes become named
-arguments. The body of the tag is a sequence of positional arguments.
+sugar for invoking a constructor or function. The tag's attributes correspond to
+*named* arguments. The body of the tag is a sequence of *positional* arguments.
 
 So this:
 
@@ -356,12 +369,12 @@ complex cases, it gets... *strange:*
 />;
 ```
 
-For users that expect "HTML attributes" to be small primitive values, it's going
+For users that expect "HTML attributes" to be tiny primitive values, it's
 unusual to see entire nested trees of tags in there.
 
 Remember, also, that our initial motivation is supporting conditional named
 arguments, positional arguments, and list elements. So this entirely new markup
-syntax, isn't yet sufficient. We also need to extend it to support conditions.
+syntax isn't yet sufficient. We also need to extend it to support conditions.
 
 One option is to effectively *also* do the "control flow element" proposal and
 allow `if ()` before attributes and child tags. Using that gets us to:
@@ -389,7 +402,7 @@ Widget build(BuildContext context) {
 #### Pros
 
 *   **Some people really love the way markup looks.** It clearly says
-    "declarative data to them". However, we sacrifice some of this when we
+    "declarative data" to them. However, we sacrifice some of this when we
     introduce conditionals and tags inside attributes. We're potentially in the
     uncanny valley where it looks enough like HTML to make them expect it to be
     *exactly* like it, which we then confound.
@@ -401,9 +414,12 @@ Widget build(BuildContext context) {
     punctuation-heavy and perhaps less error-prone than other notations.
 
 *   **Named closing tags make nesting easier to read.** Because Flutter widgets
-    tend to nest pretty deeply, the end of a build method is often a long string
-    of `)`, `}`, and `]`. It can be hard to scan back up and see what widget
-    each is associated with. Named closing tags like `</Row>` make that clearer.
+    tend to nest pretty deeply, the end of a build method is often a [long
+    string of `)`, `}`, and `]`][closing]. It can be hard to scan back up and
+    see what widget each is associated with. Named closing tags like `</Row>`
+    make that clearer.
+
+[closing]: https://github.com/munificent/ui-as-code/blob/master/Motivation.md#p3-long-strings-of-hard-to-read-closing-delimiters
 
 #### Cons
 
@@ -433,18 +449,18 @@ can already express. That raises the bar for this feature: it must be not just
 good but *so much better* that it justifies the additional complexity.
 
 Because of that, I think it's more important to look at the feature in the
-context of the entire language than the merits of any feature in isolation. Here
-are a couple of aspects to evaluate:
+context of the entire language than the merits of any feature in isolation,
+since users always have the option to *not* use it. Here are a couple of aspects
+to evaluate:
 
 ### Declarativeness
 
 UI code is easiest to read when the code shows *what* the corresponding UI is,
 not *how* it is built up. When looking at declarative-styled code, the structure
-of the program text itself reflects what it does.
-
-With imperative code where you have a lot of mutation and side effects, you have
-to simulate the execution of the code in your head and then visualize the
-resulting state. That's a much higher cognitive effort.
+of the *program text itself* reflects what it does. With imperative code where
+you have a lot of mutation and side effects, you have to simulate the execution
+of the code in your head and then visualize the resulting state. That's a much
+higher cognitive effort.
 
 Some amount of this is necessary for complex use cases, but as much as possible,
 we want most simple UI code to be declarative in nature.
@@ -452,26 +468,29 @@ we want most simple UI code to be declarative in nature.
 ### Switching cost
 
 Imagine you already have a `build()` method containing a big tree of code using
-the current Dart syntax. Think a 50-line expression of nested constructor calls.
-Later, you realize you need to omit one tiny leaf of that tree based on some
-runtime condition.
+the current Dart syntax. Think [a 30-line expression of nested constructor
+calls][chat]. Later, you realize you need to omit one tiny leaf of that tree
+based on some runtime condition.
+
+[chat]: https://github.com/munificent/ui-as-code/blob/master/examples/original/chat_message.dart#L27-L61
 
 How much of that code do you have to change or rewrite to make that happen?
 Obviously, the less, the better. We can automate the switching with tooling in
-some cases, but it still increases the amount of code churn, makes code reviews
-slower, etc.
+some cases, but it still makes things like code reviews harder since the
+effective change is buried in meaningless churn.
 
 ### Redundancy
 
 Technically, everything in the "UI as code" charter is redundant. You *can* do
-everything it enables already. It's just awkward or tedious. This means we're
-foisting some level of redundancy onto users and giving them two ways to express
-the same thing. That raises the cognitive load of the language itself.
+everything it enables already. It's just too difficult, error-prone or hard to
+read. That means all of these changes foist some level of redundancy onto users
+and give them two ways to express the same thing. That raises the cognitive
+load of the language itself.
 
-Worse, it forces users to put mental effort into *choosing* which syntax, mental
-effort that they aren't spending on the real problem they're trying to solve.
-[Hick's law][] tells us that the more options a user has, the *longer* it takes
-them to pick.
+Worse, it forces users to put mental effort into *choosing* which syntax to use,
+mental effort that they aren't spending on the real problem they're trying to
+solve. [Hick's law][] tells us that the more options a user has, the *longer* it
+takes them to pick.
 
 [hick's law]: https://en.wikipedia.org/wiki/Hick%27s_law
 
@@ -494,7 +513,7 @@ variety of use cases. If, say, blocks are much worse than parenthesized argument
 lists for some uses, then users will use the latter even when surrounding code
 is using blocks.
 
-That, in turn, tends to raise the amount of redundancy. Each syntax needs to
+That, in turn, tends to raise the amount of redundancy. The new syntax needs to
 support lots of use cases, so the total amount of overlapping features goes up.
 
 And, of course, it raises switching costs. When one piece of code needs to use
@@ -504,11 +523,11 @@ to keep things consistent. So the quantity of code being switched tends to grow.
 ### Garden path syntax
 
 When a language feature is similar to some existing language or model that users
-already know, it's much easier to learn because they can reuse that existing
+already know, it's easier to learn because they can reuse that existing
 expertise. However, when the language feature doesn't *entirely* fit that model,
 the familiarity can cause expectations that reality confounds.
 
-I think of these as ["garden path" features][garden] -- the syntax leads them
+I think of these as ["garden path" features][garden]&mdash;the syntax leads them
 down a path of only to hit a dead end when it doesn't support everything they
 expect.
 
@@ -528,7 +547,8 @@ territory they'll expect.
 
 Every language proposal claims a chunk of syntax for its own use and ascribes
 some semantics to it. That's a region of the grammar that the future Dart
-language team won't be able to use for some other more valuable feature.
+language team won't be able to use for some other potentially more valuable
+feature.
 
 For example, you could imagine allowing `?` in a parameter list today to mark a
 parameter as optional. That might be nice. But there's a very good chance we'll
@@ -556,9 +576,9 @@ list.add(2);
 list.add(3);
 ```
 
-Prefering declarative code then implies we should prefer expressions. The
+Prefering declarative code then suggests we should prefer expressions. The
 control flow element proposal aligns nicely with that&mdash;it moves some of the
-control flow you can do in statements now over to the expression side of the
+control flow you can do in statements already over to the expression side of the
 grammar.
 
 Better, the "control flow" it gives you is really closer to "data flow". Then
@@ -574,14 +594,14 @@ adding `if (condition)` before a single argument.
 
 #### Redundancy
 
-Also excellent. It adds almost no new notation for things you can already do. It
-overlaps `?:` (which is pretty hard to read in all but the simplest cases). But
+Also good. It adds almost no new notation for things you can already do. It
+overlaps `?:`, which is pretty hard to read in all but the simplest cases. But
 it doesn't add any new redundant notation for invocations, argument lists, or
 collections.
 
 #### Heterogeneity
 
-This is also great, thanks to the above. Since there is only one syntax for invocations, it's automatically all homogenous.
+This is also great, thanks to the above. Since there is only one syntax for invocations, it's automatically all homogeneous.
 
 #### Garden path syntax
 
@@ -656,10 +676,6 @@ Then you have to go through *all* of the arguments and turn commas into
 semicolons and colons into equals. Don't forget to add a semicolon after the
 last one!
 
-We can automate this with tooling, but it's still a lot of code churn. That
-impacts things like code reviews and makes it harder to see the substantive
-change.
-
 #### Redundancy
 
 Likewise concerning. This introduces an entirely separate notation for an
@@ -696,10 +712,9 @@ of my favorite aspects of this proposal.
 
 #### Future-proofing
 
-This does concern me. The fact that Ruby, Groovy, Kotlin, Scala, and Swift all
-support a similar syntax shows that it's a desirable notation. The fact that
-they all use it to mean *something* else hints we may be squandering it on the
-wrong behavior.
+This does concern me. The fact that several other languages all support similar
+notation shows that it's desirable. The fact that they all use it to mean
+*something else* hints we may be squandering the syntax on the wrong semantics.
 
 Other languages use it for passing a lambda to a function or for supporting
 imperative builder-like DSL APIs. It would be great to have that for Dart. Test
@@ -728,14 +743,14 @@ to:
 ```dart
 Welcome {
   log.addAll(_log);
-  message = 'You are connected as $username.');
+  message = 'You are connected as $username.';
 }
 ```
 
 Flutter's use case is declarative. All it really wants is a notation for calling
 a constructor to produce a value. But there are many other DSL use cases that
 are explicitly imperative where the API wants to control when and how some code
-executes. That seems like a better fit for a statement-based block syntax.
+executes. Those seem like a better fit for a statement-based block syntax.
 
 ### Markup
 
@@ -821,17 +836,22 @@ for different use cases in the future.
 
 ## Conclusion
 
-I don't think you can always do good holistic design by running the numbers, but
+I don't think you can always do good holistic design by tallying numbers, but
 just to visually see all of the above prose in one place:
 
 ```
                     control elements    block    markup
-prefer declarative  :)                  :(       :/
-switching cost      :) :)               :( :(    :( :(
-redundancy          :) :)               :( :(    :(
-heterogeneity       :) :) :)            :(       :/
-garden path         :(                  :) :)    :/
-future-proofing     :/                  :(       :)
+prefer declarative  :D                  :(       :/
+switching cost      :D :D               :( :(    :( :(
+redundancy          :D :D               :( :(    :(
+heterogeneity       :D :D :D            :(       :/
+garden path         :(                  :D :D    :/
+future-proofing     :/                  :(       :D
+
+totals:
+control elements    :D :D :D :D :D :D :D :D   :(
+block               :D :D                     :( :( :( :( :( :( :(
+markup              :D                        :( :( :(
 ```
 
 Note that this ignores the pros and cons of the features themselves. If you
@@ -839,7 +859,7 @@ think, say, the markup syntax is *great* on its own, that may outweigh its poor
 interaction with the rest of the language and Dart user experience.
 
 But my belief is that, especially for syntactic sugar features, those
-interactions do dominate. And, looking down each column, there's a pretty clear
+interactions do dominate. And, looking at the totals, there's a pretty clear
 winner. This, honestly, quite surprised me. For months, I have been personally
 strongly attached to the block and markup syntaxes. (Like children, on any given
 day, either may be my favorite.)
@@ -850,10 +870,101 @@ Frankenstein assemblage of different syntaxes and a lot of churn between the two
 styles.
 
 Control flow elements is a small, limited feature. But I also feel that it's
-"right-sized" for the problem it intends to tackle. It's small size helps it
+"right-sized" for the problem it intends to tackle. Its small size helps it
 harmonize with existing code and lets the current invocation syntax continue to
-do what it does well.
+do what it does well. It's useful for code well outside Flutter. Here's an example I stumbled onto:
 
-It may end up falling apart in a full proposal or when it goes in front of user
-studies, but I think it's the path we should try to go down first, and I think
-it's the most promising path to eventual success.
+```dart
+// compile.dart
+var command = [
+  engineDartPath,
+  frontendServer,
+  '--sdk-root',
+  sdkRoot,
+  '--strong',
+  '--target=flutter',
+];
+if (trackWidgetCreation)
+  command.add('--track-widget-creation');
+if (!linkPlatformKernelIn)
+  command.add('--no-link-platform');
+if (aot) {
+  command.add('--aot');
+  command.add('--tfa');
+}
+if (targetProductVm) {
+  command.add('-Ddart.vm.product=true');
+}
+if (entryPointsJsonFiles != null) {
+  for (var entryPointsJson in entryPointsJsonFiles) {
+    command.addAll(['--entry-points', entryPointsJson]);
+  }
+}
+if (incrementalCompilerByteStorePath != null) {
+  command.add('--incremental');
+}
+if (packagesPath != null) {
+  command.addAll(['--packages', packagesPath]);
+}
+if (outputFilePath != null) {
+  command.addAll(['--output-dill', outputFilePath]);
+}
+if (depFilePath != null &&
+    (fileSystemRoots == null || fileSystemRoots.isEmpty)) {
+  command.addAll(['--depfile', depFilePath]);
+}
+if (fileSystemRoots != null) {
+  for (var root in fileSystemRoots) {
+    command.addAll(['--filesystem-root', root]);
+  }
+}
+if (fileSystemScheme != null) {
+  command.addAll(['--filesystem-scheme', fileSystemScheme]);
+}
+
+if (extraFrontEndOptions != null)
+  command.addAll(extraFrontEndOptions);
+command.add(mainPath);
+```
+
+With control flow elements, all of that fits into the list literal:
+
+```dart
+// compile.dart
+var command = [
+  engineDartPath,
+  frontendServer,
+  '--sdk-root',
+  sdkRoot,
+  '--strong',
+  '--target=flutter',
+  if (trackWidgetCreation) '--track-widget-creation',
+  if (!linkPlatformKernelIn) '--no-link-platform',
+  if (aot) ('--aot', '--tfa'),
+  if (targetProductVm) '-Ddart.vm.product=true',
+  if (entryPointsJsonFiles != null)
+    for (var entryPointsJson in entryPointsJsonFiles)
+      ('--entry-points', entryPointsJson),
+  if (incrementalCompilerByteStorePath != null) '--incremental',
+  if (packagesPath != null) ('--packages', packagesPath),
+  if (outputFilePath != null) ('--output-dill', outputFilePath),
+  if (depFilePath != null &&
+      (fileSystemRoots == null || fileSystemRoots.isEmpty))
+    ('--depfile', depFilePath),
+  if (fileSystemRoots != null)
+    for (var root in fileSystemRoots)
+      ('--filesystem-root', root),
+  if (fileSystemScheme != null) ('--filesystem-scheme', fileSystemScheme),
+  if (extraFrontEndOptions != null) ...extraFrontEndOptions,
+  mainPath
+];
+```
+
+Notice how all of the imperative `command.add(...)` and `command.addAll(...)`
+calls are gone. The fact that this makes such a big difference in a chunk of
+code so far removed from UI helps me believe the feature will be broadly useful.
+
+Control flow elements may end up falling apart as I dig into the details of a
+full proposal, but I have more confidence in it than I do the other paths that
+have known challenges. I think it's the path we should try to go down first, and
+I think it's the most promising path to eventual success.

@@ -73,3 +73,5 @@ or commenting it out removes a widget from the chain but leaves the rest alone.
 Placing the `<|` at the beginning of the next line instead of the end of the
 previous line helps with that and makes it easier to see which lines are
 subordinate to a previous one when skimming down the page.
+
+https://github.com/tc39/proposal-pipeline-operator
