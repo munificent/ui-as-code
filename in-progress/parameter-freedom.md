@@ -157,24 +157,11 @@ just that now that may involve evaluating a mixture of positional and named
 arguments instead of knowing all of the positional arguments will be evaluated
 first.
 
-Implementations already have to deal with the fact that named arguments can
-appear in a different order than the named parameters they bind to, so I don't
-believe this causes much additional complexity.
-
 ### Both optional positional and named parameters
 
 The semantics for positional and named parameters in Dart are orthogonal. (This
 is unlike most languages where you can pass any parameter by name or position.)
 To support both, we just permit both in a single function.
-
-There may be implementation challenges with this. DDC's function calling
-convention (and thus its JS interop API) takes advantage of the fact that a
-function cannot have both optional positional and named parameters, and that the
-optional positional parameters are all at the end.
-
-Other implementations may have other challenges fitting both kinds of
-optional arguments into their calling convention. We'll work with those
-teams to see how much of an issue this is.
 
 ### Non-trailing optional parameters
 
@@ -945,6 +932,69 @@ object.
 A working prototype of the parameter binding and subtyping logic is
 [here][prototype].
 
+## Implementation
+
+No language proposal is a good idea if it can't be implemented in reasonable time with reasonable efficiency. Here's my understanding from talking to implementation teams.
+
+**TODO: Talk to analyzer, dart2js, DDC, and VM runtime teams.**
+
+### Passing positional arguments after named arguments
+
+Implementations already have to deal with the fact that named arguments can
+appear in a different order than the named parameters they bind to, this doesn't
+cause much additional complexity.
+
+The VM's current calling convention implementation takes some advantage of the
+fact that positional arguments always come first, but they believe they can make
+this work with acceptable performance.
+
+**TODO: Talk to analyzer, dart2js, DDC, and VM runtime teams.**
+
+### Both optional positional and named parameters
+
+There are no concerns here for the VM.
+
+DDC's function calling convention (and thus its JS interop API) takes advantage
+of the fact that a function cannot have both optional positional and named
+parameters, and that the optional positional parameters are all at the end.
+
+**TODO: Talk to analyzer, dart2js, DDC, and VM runtime teams.**
+
+### Non-trailing optional parameters
+
+There are no performance concerns here for the VM.
+
+**TODO: Talk to analyzer, dart2js, DDC, and VM runtime teams.**
+
+### Rest parameters and spread arguments
+
+The proposal tries to be vague enough that an implementation may be able to
+avoid spurious copies in cases where an existing collection is bound directly to
+a rest parameter, but it's hard to allow that while also being precise about
+evaluation order. We may need to refine this when we get more insight into how
+often the feature is used and how performance-critical it is.
+
+It would be nice if implementations could avoid redundantly materializing a rest
+object when one rest parameter is forwarded to another:
+
+```dart
+first(List ...things) {
+  second(...things);
+}
+
+second(List ...things) { ... }
+
+main() {
+  first(1, 2, 3);
+}
+```
+
+It would be good if an implementation didn't need to materialize a *second* rest
+object when `first()` forwards to `second()`. It's not clear if this proposal
+allows that or if implementations will be able to avoid the copy.
+
+**TODO: Talk to analyzer, dart2js, DDC, and VM runtime teams.**
+
 ## Migration
 
 If this proposal did its job correctly, everything in here is non-breaking and
@@ -1208,6 +1258,99 @@ any better than the `@required` annotation currently being used. This is another
 feature worth revisiting when non-nullable types are added: A named parameter
 whose type is non-nullable and doesn't have a default value is a natural
 candidate for becoming a required parameter.
+
+### Is mixing optional and required parameters useful?
+
+Probably the least-justified corner of this proposal is that it allows
+arbitrary interleaving of required, optional, and rest parameters. This lets
+you define very strange functions like:
+
+```dart
+function(a, [b], c, ...d, [e], f, [g]) { ... }
+```
+
+Few mere mortals can understand what this does if you call it with, say, five
+arguments. (Though this proposal *does* specify the behavior very explicitly in
+a way I think is reasonable.) Examples like this are not good API design and not
+what the feature is about. Here are some examples that I *do* think are
+important:
+
+```dart
+runProcess(String command, List<String> ...args) { ... }
+```
+
+One or more required arguments following by a trailing rest parameter is the
+obvious easy example. With closures, sometimes you want to have a specific
+argument be last so that the argument list is more readable. It's possible to
+also want to use a rest parameter, so I think it makes sense to allow leading
+rest parameters:
+
+```dart
+test(List<String> ...options, Function() body) { ... }
+
+test("sync", "no-timeout", "browser", () {
+  expect("thing", equals("thing"));
+});
+```
+
+It's reasonable to combine the above two cases in APIs like:
+
+```dart
+withProcess(String command, List<String> ...args, Function(Process) body) {
+  ...
+}
+
+withProcess("dart", "--observe", "temp.dart", (process) {
+  process.stdin("some input");
+});
+```
+
+These imply that it's worth allowing the rest parameter to appear anywhere in
+the list of required parameters.
+
+What about optional parameters? We could say that any function with a rest
+parameter simply *can't* have optional parameters. That's similar to the
+restriction Dart 1 had with optional and named parameters. This proposal is a
+living example that that restriction turned out to be wrong, so I hesitate to
+introduce a *new* arbitrary restriction at the same time.
+
+I can imagine some APIs might use both:
+
+```dart
+runProcess(String command, [String workingDir], List<String> ...args) { ... }
+
+withProcess(String command, List<String> ...args, Function(Process) body,
+    [Function() onError]) { ... }
+```
+
+This implies we want to support the rest parameter appearing anywhere inside the
+required and optional parameters, at least. Consider a notation that let you
+express that. I think it would be confusing to put the `...` inside the `[]` if
+you want a rest parameter between some optional parameters:
+
+```dart
+function([a, ...b, c]) { ... }
+```
+
+That looks like `b` is an "optional rest" parameter, but there's no such thing.
+It's just a rest parameter that happens to have optional parameters before and
+after it. I think a more natural syntax is:
+
+```dart
+function([a], ...b, [c]) { ... }
+```
+
+That means, at least syntactically, we have some notion of multiple "sections"
+of optional positional parameters. And because the rest parameter can appear
+anywhere, we already have non-contiguous required optional parameters.
+
+At that point, I figured we may as well do the last step towards full generality
+and allow an optional parameters to precede required ones. It is what Ruby does,
+and allows some handy patterns like:
+
+```dart
+random([int min = 0], int max) { ... }
+```
 
 [column]: https://docs.flutter.io/flutter/widgets/Column-class.html
 [js rest]: https://github.com/dart-lang/sdk/blob/master/pkg/js/lib/src/varargs.dart
