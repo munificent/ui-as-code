@@ -1,0 +1,3 @@
+linter:
+  rules:
+    - unawaited_futures

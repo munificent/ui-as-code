@@ -1,0 +1,16 @@
+# Copyright (c) 2017, the Dart project authors.  Please see the AUTHORS file
+# for details. All rights reserved. Use of this source code is governed by a
+# BSD-style license that can be found in the LICENSE file.
+
+analyzer:
+  language:
+    enableSuperMixins: false
+  exclude:
+    - testcases/**
+  errors:
+    # Allow having TODOs in the code
+    todo: ignore
+
+    # Allow deprecated calls (although it would be nice to have a distinction
+    # between internal and external deprecated calls).
+    deprecated_member_use: ignore
