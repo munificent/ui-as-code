@@ -51,8 +51,8 @@ class Histogram<T> {
     return objects;
   }
 
-  void printDescending(String label) {
-    _print(label, descending());
+  void printDescending(String label, {bool showAll}) {
+    _print(label, descending(), showAll: showAll);
   }
 
   void printOrdered(String label) {
@@ -61,7 +61,9 @@ class Histogram<T> {
     _print(label, objects);
   }
 
-  void _print(String label, List<T> keys) {
+  void _print(String label, List<T> keys, {bool showAll}) {
+    showAll ??= false;
+
     var total = totalCount;
     print("\n--- $label ($totalCount total) ---");
 
@@ -73,7 +75,7 @@ class Histogram<T> {
       var countString = count(object).toString().padLeft(7);
       var percent = 100 * count(object) / total;
       var percentString = percent.toStringAsFixed(3).padLeft(7);
-      if (percent >= 0.1) {
+      if (percent >= 0.1 || showAll) {
         var line = "${countString} ($percentString%): $object";
         if (longest < 40) {
           line = line.padRight(longest + 22);

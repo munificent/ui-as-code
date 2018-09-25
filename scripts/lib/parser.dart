@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:analyzer/analyzer.dart';
 import 'package:analyzer/dart/ast/token.dart';
+import 'package:analyzer/source/line_info.dart';
 import 'package:analyzer/src/dart/scanner/reader.dart';
 import 'package:analyzer/src/dart/scanner/scanner.dart';
 import 'package:analyzer/src/generated/parser.dart';
@@ -12,7 +13,7 @@ import 'package:analyzer/src/string_source.dart';
 import 'package:path/path.dart' as p;
 
 Token tokenizeString(String source) {
-  var errorListener = new _ErrorListener();
+  var errorListener = new ErrorListener();
 
   // Tokenize the source.
   var reader = new CharSequenceReader(source);
@@ -21,9 +22,10 @@ Token tokenizeString(String source) {
   return scanner.tokenize();
 }
 
-void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
+void forEachDartFile(
+    String path, Function(File file, String relative) callback) {
   if (new File(path).existsSync()) {
-    _parseFile(new File(path), p.relative(path, from: path), createVisitor);
+    callback(new File(path), p.relative(path, from: path));
     return;
   }
 
@@ -36,33 +38,46 @@ void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
     // Don't care about cached packages.
     if (entry.path.contains("/.dart_tool/")) continue;
 
-    _parseFile(
-        entry as File, p.relative(entry.path, from: path), createVisitor);
+    callback(entry, p.relative(entry.path, from: path));
   }
 }
 
-void _parseFile(File file, String shortPath,
-    AstVisitor<void> Function(String) createVisitor) {
+void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
+  forEachDartFile(path, (file, relative) {
+    parseFile(file, relative, (path, _) => createVisitor(path));
+  });
+}
+
+void parsePathWithLineInfo(
+    String path, AstVisitor<void> Function(String, LineInfo) createVisitor) {
+  forEachDartFile(path, (file, relative) {
+    parseFile(file, relative, createVisitor);
+  });
+}
+
+void parseFile(File file, String shortPath,
+    AstVisitor<void> Function(String, LineInfo) createVisitor) {
   var source = file.readAsStringSync();
 
-  var errorListener = new _ErrorListener();
+  var errorListener = new ErrorListener();
 
   // Tokenize the source.
   var reader = new CharSequenceReader(source);
   var stringSource = new StringSource(source, file.path);
   var scanner = new Scanner(stringSource, reader, errorListener);
   var startToken = scanner.tokenize();
+  var lineInfo = new LineInfo(scanner.lineStarts);
 
   // Parse it.
   var parser = new Parser(stringSource, errorListener);
   parser.enableOptionalNewAndConst = true;
 
   var node = parser.parseCompilationUnit(startToken);
-  node.accept(createVisitor(shortPath));
+  node.accept(createVisitor(shortPath, lineInfo));
 }
 
 /// A simple [AnalysisErrorListener] that just collects the reported errors.
-class _ErrorListener implements AnalysisErrorListener {
+class ErrorListener implements AnalysisErrorListener {
   void onError(AnalysisError error) {
     print(error);
   }
