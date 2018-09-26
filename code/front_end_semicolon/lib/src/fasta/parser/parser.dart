@@ -658,7 +658,9 @@ class Parser {
     listener.beginLibraryName(libraryKeyword);
     Token token = parseQualified(libraryKeyword, IdentifierContext.libraryName,
         IdentifierContext.libraryNameContinuation);
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     listener.endLibraryName(libraryKeyword, token);
     return token;
   }
@@ -699,14 +701,19 @@ class Parser {
     token = parseConditionalUriStar(token);
     token = parseImportPrefixOpt(token);
     token = parseCombinatorStar(token).next;
-    if (optional(';', token)) {
-      listener.endImport(importKeyword, token);
-      return token;
-    } else {
-      // Recovery
-      listener.endImport(importKeyword, null);
-      return parseImportRecovery(uri);
-    }
+
+    // TODO(semicolon)
+    token = ensureTerminator(token.previous);
+    listener.endImport(importKeyword, token);
+    return token;
+//    if (optional(';', token)) {
+//      listener.endImport(importKeyword, token);
+//      return token;
+//    } else {
+//      // Recovery
+//      listener.endImport(importKeyword, null);
+//      return parseImportRecovery(uri);
+//    }
   }
 
   /// Recover given out-of-order clauses in an import directive where [token] is
@@ -894,7 +901,9 @@ class Parser {
     Token token = ensureLiteralString(exportKeyword);
     token = parseConditionalUriStar(token);
     token = parseCombinatorStar(token);
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     listener.endExport(exportKeyword, token);
     return token;
   }
@@ -1005,7 +1014,9 @@ class Parser {
     assert(optional('part', partKeyword));
     listener.beginPart(partKeyword);
     Token token = ensureLiteralString(partKeyword);
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     listener.endPart(partKeyword, token);
     return token;
   }
@@ -1028,7 +1039,9 @@ class Parser {
     } else {
       token = ensureLiteralString(ofKeyword);
     }
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     listener.endPartOf(partKeyword, ofKeyword, token, hasName);
     return token;
   }
@@ -5230,7 +5243,9 @@ class Parser {
           .next;
     }
     token = parseParenthesizedCondition(whileToken);
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     listener.endDoWhileStatement(doToken, whileToken, token);
     return token;
   }

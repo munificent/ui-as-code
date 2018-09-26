@@ -42,7 +42,10 @@ abstract class AbstractScanner implements Scanner {
 
   // TODO(semicolon): Copied from ast.dart Source.getLocation().
   int _getLine(int offset) {
-    int low = 0, high = lineStarts.length - 1;
+    // TODO(semicolon): This was initially 0, but that causes it to not
+    // correctly detect tokens on the second line.
+    int low = -1;
+    int high = lineStarts.length - 1;
     while (low < high) {
       int mid = high - ((high - low) >> 1); // Get middle, rounding up.
       int pivot = lineStarts[mid];
@@ -53,11 +56,13 @@ abstract class AbstractScanner implements Scanner {
       }
     }
 
-    int lineIndex = low;
+    // TODO(semicolon): +1 is to offset the -1 above.
+    int lineIndex = low + 1;
 //    int lineStart = lineStarts[lineIndex];
     int lineNumber = 1 + lineIndex;
 //    int columnNumber = 1 + offset - lineStart;
 //    return new Location(file, lineNumber, columnNumber);
+
     return lineNumber;
   }
 

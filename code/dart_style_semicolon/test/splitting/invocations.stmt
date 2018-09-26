@@ -11,9 +11,7 @@ compiler.something().something().some();
 <<<
 compiler.something().something().some();
 >>> don't split before implicit receiver
-return
-     call({'type': type, 'id': id})
-    .then(deserializeAsset);
+return call({'type': type, 'id': id}).then(deserializeAsset);
 <<<
 return call({'type': type, 'id': id})
     .then(deserializeAsset);

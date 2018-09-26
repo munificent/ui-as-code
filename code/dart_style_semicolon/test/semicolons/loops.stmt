@@ -93,3 +93,31 @@ for (;;) {
   continue;
   label;
 }
+>>>
+main() {
+  do {} while (true)
+}
+<<<
+main() {
+  do {} while (true);
+}
+>>>
+main() { do {} while (true) }
+<<<
+main() {
+  do {} while (true);
+}
+>>>
+main() { do {}
+  while (true) }
+<<<
+main() {
+  do {} while (true);
+}
+>>>
+main() { do {} while
+  (true) }
+<<<
+main() {
+  do {} while (true);
+}
