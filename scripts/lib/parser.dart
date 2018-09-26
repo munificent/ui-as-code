@@ -79,6 +79,6 @@ void parseFile(File file, String shortPath,
 /// A simple [AnalysisErrorListener] that just collects the reported errors.
 class ErrorListener implements AnalysisErrorListener {
   void onError(AnalysisError error) {
-    print(error);
+//    print(error);
   }
 }

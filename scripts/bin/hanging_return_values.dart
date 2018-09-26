@@ -16,7 +16,7 @@ void main(List<String> arguments) {
     // Skip the SDK tests. There are a bunch that have magic comments right
     // before certain tokens to validate error messages and those end up
     // pushing the return to the next line. This isn't normal Dart code.
-//    if (relative.startsWith("sdk/tests/")) return;
+    if (relative.startsWith("sdk/tests/")) return;
     files++;
 
     parseFile(file, relative, (path, lineInfo) {
