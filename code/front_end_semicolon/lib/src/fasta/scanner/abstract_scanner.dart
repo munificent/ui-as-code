@@ -63,8 +63,8 @@ abstract class AbstractScanner implements Scanner {
 
   // TODO(semicolon): Stuff I added:
   bool isTerminator(Token token) {
-    print("isterm ${token.previous} (${_getLine(token.previous.offset)}) -> "
-        "${token} (${_getLine(token.offset)})");
+//    print("isterm ${token.previous} (${_getLine(token.previous.offset)}) -> "
+//        "${token} (${_getLine(token.offset)})");
 
     // "}" is always implicitly a terminator.
     if (token.type == TokenType.CLOSE_CURLY_BRACKET) return true;

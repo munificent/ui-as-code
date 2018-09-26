@@ -1,0 +1,15 @@
+40 columns                              |
+>>>
+try {} catch (_) {
+  rethrow
+}
+<<<
+try {} catch (_) {
+  rethrow;
+}
+>>>
+try {} catch (_) { rethrow }
+<<<
+try {} catch (_) {
+  rethrow;
+}

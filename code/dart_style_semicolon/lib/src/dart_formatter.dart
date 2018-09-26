@@ -18,7 +18,8 @@ import 'error_listener.dart';
 import 'exceptions.dart';
 import 'source_code.dart';
 import 'source_visitor.dart';
-import 'string_compare.dart' as string_compare;
+// TODO(semicolon): Not checking strings since dartfmt adds semicolons.
+//import 'string_compare.dart' as string_compare;
 import 'style_fix.dart';
 
 /// Dart source code formatter.

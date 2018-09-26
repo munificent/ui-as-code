@@ -3571,7 +3571,9 @@ class Parser {
       starToken = token = token.next;
     }
     token = parseExpression(token);
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+//    token = ensureSemicolon(token);
+    token = ensureTerminator(token);
     listener.endYieldStatement(begin, starToken, token);
     return token;
   }
@@ -5332,7 +5334,9 @@ class Parser {
     Token throwToken = token.next;
     assert(optional('rethrow', throwToken));
     listener.beginRethrowStatement(throwToken);
-    token = ensureSemicolon(throwToken);
+    // TODO(semicolon)
+    token = ensureTerminator(throwToken);
+//    token = ensureSemicolon(throwToken);
     listener.endRethrowStatement(throwToken, token);
     return token;
   }
@@ -5638,13 +5642,17 @@ class Parser {
     Token breakKeyword = token = token.next;
     assert(optional('break', breakKeyword));
     bool hasTarget = false;
-    if (token.next.isIdentifier) {
+    // TODO(semicolon)
+    if (!isTerminator(token.next) && token.next.isIdentifier) {
+//    if (token.next.isIdentifier) {
       token = ensureIdentifier(token, IdentifierContext.labelReference);
       hasTarget = true;
     } else if (!isBreakAllowed) {
       reportRecoverableError(breakKeyword, fasta.messageBreakOutsideOfLoop);
     }
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+//    token = ensureSemicolon(token);
+    token = ensureTerminator(token);
     listener.handleBreakStatement(hasTarget, breakKeyword, token);
     return token;
   }
@@ -5704,7 +5712,10 @@ class Parser {
     if (kind == Assert.Expression) {
       reportRecoverableError(assertKeyword, fasta.messageAssertAsExpression);
     } else if (kind == Assert.Statement) {
-      ensureSemicolon(token);
+      // TODO(semicolon)
+//    ensureSemicolon(token);
+      // Make sure there is a terminator, but don't advance to the semicolon.
+      token = ensureTerminator(token).previous;
     }
     listener.endAssert(
         assertKeyword, kind, leftParenthesis, commaToken, token.next);
@@ -5731,7 +5742,9 @@ class Parser {
     Token continueKeyword = token = token.next;
     assert(optional('continue', continueKeyword));
     bool hasTarget = false;
-    if (token.next.isIdentifier) {
+    // TODO(semicolon)
+    if (!isTerminator(token.next) && token.next.isIdentifier) {
+//    if (token.next.isIdentifier) {
       token = ensureIdentifier(token, IdentifierContext.labelReference);
       hasTarget = true;
       if (!isContinueWithLabelAllowed) {
@@ -5745,7 +5758,9 @@ class Parser {
               ? fasta.messageContinueWithoutLabelInCase
               : fasta.messageContinueOutsideOfLoop);
     }
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+//    token = ensureSemicolon(token);
+    token = ensureTerminator(token);
     listener.handleContinueStatement(hasTarget, continueKeyword, token);
     return token;
   }
