@@ -1,0 +1,53 @@
+40 columns                              |
+>>> expression-bodied function
+a() => 123
+<<<
+a() => 123;
+>>>
+a() => 123
+b() {}
+<<<
+a() => 123;
+b() {}
+>>> local function
+main() {
+  a() => b
+  - c
+}
+<<<
+main() {
+  a() => b;
+  -c;
+}
+>>> top-level variable
+var a = b
++c
+<<<
+var a = b + c;
+>>> local variable
+main() {
+  var a = b
+  - c
+  var d = e
+  +f
+}
+<<<
+main() {
+  var a = b;
+  -c;
+  var d = e + f;
+}
+>>> old-style typedef
+typedef void Foo<T>(T t)
+<<<
+typedef void Foo<T>(T t);
+>>> new-style typedef
+typedef Foo = void Function(int)
+<<<
+typedef Foo = void Function(int);
+>>>
+typedef Foo = void Function(int)
+Function(int)
+<<<
+typedef Foo = void Function(int)
+    Function(int);

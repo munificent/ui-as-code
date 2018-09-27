@@ -1,0 +1,58 @@
+40 columns                              |
+>>>
+a - b
+<<<
+a - b;
+>>>
+{
+a
+- b
+}
+<<<
+{
+  a;
+  -b;
+}
+>>>
+a -
+b
+<<<
+a - b;
+>>> inside parentheses
+a + (b
+-c)
+<<<
+a + (b - c);
+>>> in argument list
+fn(a, b
+-c)
+<<<
+fn(a, b - c);
+>>> in index operator
+list[a
+-b]
+<<<
+list[a - b];
+>>> in list literal
+a + [b
+-c]
+<<<
+a + [b - c];
+>>> in map literal
+a + {b
+-c
+:
+d
+-e
+}
+<<<
+a + {b - c: d - e};
+>>> lambda escapes expression context
+a + (() { b
+-c})
+<<<
+a +
+    (() {
+      b;
+      -c;
+    });

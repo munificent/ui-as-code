@@ -297,6 +297,17 @@ class Parser {
         token, new SyntheticToken(TokenType.SEMICOLON, next.charOffset));
   }
 
+  /// Whether we are currently parsing an expression at the "top level" of a
+  /// statement or declaration. When this is true, a terminating token will
+  /// end the expression.
+  ///
+  /// When false, it means we are in a context where we know a statement or
+  /// declaration cannot end (such as inside a parenthesized expression), so
+  /// terminators should be ignored.
+  bool get inStatementContext => _statementContexts.last;
+
+  final List<bool> _statementContexts = [true];
+
   // --- End stuff. ---
 
   Listener listener;
@@ -1149,7 +1160,9 @@ class Parser {
       token =
           parseFormalParametersRequiredOpt(token, MemberKind.FunctionTypeAlias);
     }
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     listener.endFunctionTypeAlias(typedefKeyword, equals, token);
     return token;
   }
@@ -2292,7 +2305,9 @@ class Parser {
       token = parseFieldInitializerOpt(name, name, varFinalOrConst, isTopLevel);
       ++fieldCount;
     }
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     if (isTopLevel) {
       listener.endTopLevelFields(staticToken, covariantToken, varFinalOrConst,
           fieldCount, beforeStart.next, token);
@@ -3386,6 +3401,8 @@ class Parser {
       }
     }
 
+    _statementContexts.add(true);
+
     LoopState savedLoopState = loopState;
     loopState = LoopState.OutsideLoop;
     listener.beginBlockFunctionBody(begin);
@@ -3406,6 +3423,8 @@ class Parser {
     assert(optional('}', token));
     listener.endBlockFunctionBody(statementCount, begin, token);
     loopState = savedLoopState;
+
+    _statementContexts.removeLast();
     return token;
   }
 
@@ -3414,7 +3433,9 @@ class Parser {
     Token begin = token;
     token = parseExpression(token);
     if (!ofFunctionExpression) {
-      token = ensureSemicolon(token);
+      // TODO(semicolon)
+      token = ensureTerminator(token);
+//      token = ensureSemicolon(token);
       listener.handleExpressionFunctionBody(begin, token);
     } else {
       listener.handleExpressionFunctionBody(begin, null);
@@ -3753,6 +3774,10 @@ class Parser {
       int lastBinaryExpressionLevel = -1;
       while (identical(tokenLevel, level)) {
         Token operator = next;
+
+        // TODO(semicolon): Don't consume operators that wrap to the next line.
+        if (inStatementContext && isTerminator(operator)) break;
+
         if (identical(tokenLevel, CASCADE_PRECEDENCE)) {
           if (!allowCascades) {
             return token;
@@ -3933,6 +3958,9 @@ class Parser {
   Token parseArgumentOrIndexStar(Token token, TypeParamOrArgInfo typeArg) {
     Token next = token.next;
     Token beginToken = next;
+
+    _statementContexts.add(false);
+
     while (true) {
       if (optional('[', next)) {
         assert(typeArg == noTypeParamOrArg);
@@ -3982,6 +4010,9 @@ class Parser {
         break;
       }
     }
+
+    _statementContexts.removeLast();
+
     return token;
   }
 
@@ -4118,12 +4149,16 @@ class Parser {
   }
 
   Token parseExpressionInParenthesis(Token token) {
+    _statementContexts.add(false);
+
     token = token.next;
     assert(optional('(', token));
     BeginToken begin = token;
     token = parseExpression(token);
     token = ensureCloseParen(token, begin);
     assert(optional(')', token));
+
+    _statementContexts.removeLast();
     return token;
   }
 
@@ -4170,6 +4205,8 @@ class Parser {
   /// if not. This is a suffix parser because it is assumed that type arguments
   /// have been parsed, or `listener.handleNoTypeArguments` has been executed.
   Token parseLiteralListSuffix(Token token, Token constKeyword) {
+    _statementContexts.add(false);
+
     Token beforeToken = token;
     Token beginToken = token = token.next;
     assert(optional('[', token) || optional('[]', token));
@@ -4222,6 +4259,9 @@ class Parser {
     }
     mayParseFunctionExpressions = old;
     listener.handleLiteralList(count, beginToken, constKeyword, token);
+
+    _statementContexts.removeLast();
+
     return token;
   }
 
@@ -4238,6 +4278,8 @@ class Parser {
   /// if not. This is a suffix parser because it is assumed that type arguments
   /// have been parsed, or `listener.handleNoTypeArguments` has been executed.
   Token parseLiteralMapSuffix(Token token, Token constKeyword) {
+    _statementContexts.add(false);
+
     Token beginToken = token = token.next;
     assert(optional('{', beginToken));
     int count = 0;
@@ -4278,6 +4320,9 @@ class Parser {
     assert(optional('}', token));
     mayParseFunctionExpressions = old;
     listener.handleLiteralMap(count, beginToken, constKeyword, token);
+
+    _statementContexts.removeLast();
+
     return token;
   }
 
@@ -4656,6 +4701,8 @@ class Parser {
   /// ;
   /// ```
   Token parseArguments(Token token) {
+    _statementContexts.add(false);
+
     Token begin = token = token.next;
     assert(optional('(', begin));
     listener.beginArguments(begin);
@@ -4708,6 +4755,9 @@ class Parser {
     assert(optional(')', token));
     mayParseFunctionExpressions = old;
     listener.endArguments(argumentCount, begin, token);
+
+    _statementContexts.removeLast();
+
     return token;
   }
 
@@ -4964,7 +5014,9 @@ class Parser {
       ++count;
     }
     if (endWithSemicolon) {
-      Token semicolon = ensureSemicolon(token);
+      // TODO(semicolon)
+      Token semicolon = ensureTerminator(token);
+//      Token semicolon = ensureSemicolon(token);
       listener.endVariablesDeclaration(count, semicolon);
       return semicolon;
     } else {
@@ -5256,6 +5308,8 @@ class Parser {
   /// ;
   /// ```
   Token parseBlock(Token token) {
+    _statementContexts.add(true);
+
     Token begin = token = ensureBlock(token, null);
     listener.beginBlock(begin);
     int statementCount = 0;
@@ -5275,6 +5329,8 @@ class Parser {
     token = token.next;
     assert(optional('}', token));
     listener.endBlock(statementCount, begin, token);
+
+    _statementContexts.removeLast();
     return token;
   }
 

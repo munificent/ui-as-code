@@ -66,6 +66,50 @@ abstract class AbstractScanner implements Scanner {
     return lineNumber;
   }
 
+  static final _nonTerminators = [
+    TokenType.AMPERSAND,
+    TokenType.AMPERSAND_AMPERSAND,
+    TokenType.AMPERSAND_EQ,
+    TokenType.BANG_EQ,
+    TokenType.BAR,
+    TokenType.BAR_BAR,
+    TokenType.BAR_EQ,
+    // TODO: Will we ever want to use a prefix ":"?
+//    TokenType.COLON,
+    TokenType.COMMA,
+    TokenType.CARET,
+    TokenType.CARET_EQ,
+    TokenType.EQ,
+    TokenType.EQ_EQ,
+    TokenType.GT,
+    TokenType.GT_EQ,
+    TokenType.GT_GT,
+    TokenType.GT_GT_EQ,
+    // TODO: Can be a terminator because of generics: `<int>[]`.
+//    TokenType.LT,
+    TokenType.LT_EQ,
+    TokenType.LT_LT,
+    TokenType.LT_LT_EQ,
+    TokenType.MINUS_EQ,
+    TokenType.PERCENT,
+    TokenType.PERCENT_EQ,
+    TokenType.PERIOD,
+    TokenType.PERIOD_PERIOD,
+    TokenType.PLUS,
+    TokenType.PLUS_EQ,
+    TokenType.PLUS_PLUS,
+    TokenType.QUESTION,
+    TokenType.QUESTION_PERIOD,
+    TokenType.QUESTION_QUESTION,
+    TokenType.QUESTION_QUESTION_EQ,
+    TokenType.SLASH,
+    TokenType.SLASH_EQ,
+    TokenType.STAR,
+    TokenType.STAR_EQ,
+    TokenType.TILDE_SLASH,
+    TokenType.TILDE_SLASH_EQ,
+  ].toSet();
+
   // TODO(semicolon): Stuff I added:
   bool isTerminator(Token token) {
 //    print("isterm ${token.previous} (${_getLine(token.previous.offset)}) -> "
@@ -73,6 +117,13 @@ abstract class AbstractScanner implements Scanner {
 
     // "}" is always implicitly a terminator.
     if (token.type == TokenType.CLOSE_CURLY_BRACKET) return true;
+
+    // The end of the file is a terminator.
+    if (token.type == TokenType.EOF) return true;
+
+    // Some tokens are never terminators since they cannot begin a statement or
+    // declaration.
+    if (_nonTerminators.contains(token.type)) return false;
 
     // TODO(semicolon): Special case adjacent strings?
 

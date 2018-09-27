@@ -13,3 +13,21 @@ main() { 123 }
 main() {
   123;
 }
+>>>
+main() async => await future
+<<<
+main() async => await future;
+>>>
+main() async => await
+future
+<<<
+main() async => await future;
+>>>
+throw error
+<<<
+throw error;
+>>>
+throw
+error
+<<<
+throw error;
