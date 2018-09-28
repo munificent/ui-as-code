@@ -153,23 +153,33 @@ void _testFile(String name, String path, Iterable<StyleFix> baseFixes) {
         var formatter = new DartFormatter(
             pageWidth: pageWidth, indent: leadingIndent, fixes: fixes);
 
-        var actual = formatter.formatSource(inputCode);
+        try {
+          var actual = formatter.formatSource(inputCode);
 
-        // The test files always put a newline at the end of the expectation.
-        // Statements from the formatter (correctly) don't have that, so add
-        // one to line up with the expected result.
-        var actualText = actual.text;
-        if (!isCompilationUnit) actualText += "\n";
+          // The test files always put a newline at the end of the expectation.
+          // Statements from the formatter (correctly) don't have that, so add
+          // one to line up with the expected result.
+          var actualText = actual.text;
+          if (!isCompilationUnit) actualText += "\n";
 
-        // Fail with an explicit message because it's easier to read than
-        // the matcher output.
-        if (actualText != expected.text) {
-          fail("Formatting did not match expectation. Expected:\n"
-              "${expected.text}\nActual:\n$actualText");
+          if (expectedOutput.trim() == "parse error") {
+            fail("Expected parse error, but got:\n$actualText");
+          } else {
+            // Fail with an explicit message because it's easier to read than
+            // the matcher output.
+            if (actualText != expected.text) {
+              fail("Formatting did not match expectation. Expected:\n"
+                  "${expected.text}\nActual:\n$actualText");
+            }
+
+            expect(actual.selectionStart, equals(expected.selectionStart));
+            expect(actual.selectionLength, equals(expected.selectionLength));
+          }
+        } on FormatterException catch (ex) {
+          if (expectedOutput.trim() != "parse error") {
+            fail("Unexpected parse error:\n$ex\nExpected:\n${expected.text}");
+          }
         }
-
-        expect(actual.selectionStart, equals(expected.selectionStart));
-        expect(actual.selectionLength, equals(expected.selectionLength));
       });
     }
   });

@@ -184,7 +184,11 @@ abstract class AbstractScanner implements Scanner {
       : lineStarts = new LineStarts(numberOfBytesHint) {
     this.tail = this.tokens;
 
-    lastScanner = this;
+    // TODO(semicolon): Mega-hack. It creates a separate string scanner for
+    // parsing identifier references in comments. Ignore those.
+    if (!StackTrace.current.toString().contains("parseCommentReferences")) {
+      lastScanner = this;
+    }
   }
 
   /**

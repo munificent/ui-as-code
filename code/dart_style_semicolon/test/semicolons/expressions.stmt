@@ -31,3 +31,7 @@ throw
 error
 <<<
 throw error;
+>>>
+var names = []
+<<<
+var names = [];

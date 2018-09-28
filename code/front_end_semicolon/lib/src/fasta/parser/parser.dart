@@ -104,6 +104,28 @@ import 'util.dart'
     isWhitespace,
     optional;
 
+// TODO(semicolon)
+/// The grammar context we're currently parsing.
+///
+/// Used to determine which tokens can be terminators from significant newlines.
+enum NewlineContext {
+  /// The top level of a program or inside a class body.
+  ///
+  /// Similar to statement except that `{` and `=>` are not considered
+  /// terminators. This is because blocks and statement expressions are not
+  /// allowed, so the `{` or `=>` must be part of the preceding function
+  /// declaration.
+  declaration,
+
+  /// The top level of a statement expression inside a block. All tokens that
+  /// can possibly be terminators are terminators.
+  statement,
+
+  /// Nested inside an expression that cannot be at the end of a statement
+  /// expression. No tokens are terminators.
+  expression
+}
+
 /// An event generating parser of Dart programs. This parser expects all tokens
 /// in a linked list (aka a token stream).
 ///
@@ -258,6 +280,19 @@ import 'util.dart'
 class Parser {
   // TODO(semicolon): Stuff I added:
   bool isTerminator(Token token) {
+    // If we're not in a statement context (i.e. parsing an expression in a
+    // place where it could be terminated by a ";"), then no tokens are
+    // terminators.
+    if (_newlineContexts.last == NewlineContext.expression) return false;
+
+    // Ignore newlines before "{" and "=>" in declaration space since we don't
+    // have expression statements. We know those must be part of the preceding
+    // declaration.
+    if (_newlineContexts.last == NewlineContext.declaration) {
+      if (token.type == TokenType.OPEN_CURLY_BRACKET) return false;
+      if (token.type == TokenType.FUNCTION) return false;
+    }
+
     return AbstractScanner.lastScanner.isTerminator(token);
   }
 
@@ -297,16 +332,16 @@ class Parser {
         token, new SyntheticToken(TokenType.SEMICOLON, next.charOffset));
   }
 
-  /// Whether we are currently parsing an expression at the "top level" of a
-  /// statement or declaration. When this is true, a terminating token will
-  /// end the expression.
-  ///
-  /// When false, it means we are in a context where we know a statement or
-  /// declaration cannot end (such as inside a parenthesized expression), so
-  /// terminators should be ignored.
-  bool get inStatementContext => _statementContexts.last;
+  final List<NewlineContext> _newlineContexts = [NewlineContext.declaration];
 
-  final List<bool> _statementContexts = [true];
+  void _pushContext(NewlineContext context) {
+//    print("push $context\n${StackTrace.current}");
+    _newlineContexts.add(context);
+  }
+
+  void _popContext() {
+    _newlineContexts.removeLast();
+  }
 
   // --- End stuff. ---
 
@@ -3348,7 +3383,11 @@ class Parser {
       listener.handleNativeFunctionBodyIgnored(nativeToken, next);
       // Ignore the native keyword and fall through to parse the body
     }
-    if (optional(';', next)) {
+    // TODO(semicolon)
+//    if (optional(';', next)) {
+    var semi = optionalTerminator(next);
+    if (!ofFunctionExpression && semi != null) {
+      next = semi;
       if (!allowAbstract) {
         reportRecoverableError(next, fasta.messageExpectedBody);
       }
@@ -3401,7 +3440,7 @@ class Parser {
       }
     }
 
-    _statementContexts.add(true);
+    _pushContext(NewlineContext.statement);
 
     LoopState savedLoopState = loopState;
     loopState = LoopState.OutsideLoop;
@@ -3424,7 +3463,7 @@ class Parser {
     listener.endBlockFunctionBody(statementCount, begin, token);
     loopState = savedLoopState;
 
-    _statementContexts.removeLast();
+    _popContext();
     return token;
   }
 
@@ -3776,7 +3815,7 @@ class Parser {
         Token operator = next;
 
         // TODO(semicolon): Don't consume operators that wrap to the next line.
-        if (inStatementContext && isTerminator(operator)) break;
+        if (isTerminator(operator)) break;
 
         if (identical(tokenLevel, CASCADE_PRECEDENCE)) {
           if (!allowCascades) {
@@ -3959,7 +3998,7 @@ class Parser {
     Token next = token.next;
     Token beginToken = next;
 
-    _statementContexts.add(false);
+    _pushContext(NewlineContext.expression);
 
     while (true) {
       if (optional('[', next)) {
@@ -4011,7 +4050,7 @@ class Parser {
       }
     }
 
-    _statementContexts.removeLast();
+    _popContext();
 
     return token;
   }
@@ -4097,29 +4136,36 @@ class Parser {
     assert(optional('(', next));
     Token nextToken = next.endGroup.next;
     int kind = nextToken.kind;
-    if (mayParseFunctionExpressions) {
-      if ((identical(kind, FUNCTION_TOKEN) ||
-          identical(kind, OPEN_CURLY_BRACKET_TOKEN))) {
-        listener.handleNoTypeVariables(next);
-        return parseFunctionExpression(token);
-      } else if (identical(kind, KEYWORD_TOKEN) ||
-          identical(kind, IDENTIFIER_TOKEN)) {
-        if (optional('async', nextToken) || optional('sync', nextToken)) {
-          listener.handleNoTypeVariables(next);
-          return parseFunctionExpression(token);
-        }
-        // Recovery
-        // If there is a stray simple identifier in the function expression
-        // because the user is typing (e.g. `() asy {}`) then continue parsing
-        // and allow parseFunctionExpression to report an unexpected token.
-        kind = nextToken.next.kind;
+
+    // TODO(semicolon): Always treat a newline after ")" in a statement context
+    // as significant when possible even if ignoring it could parse as a valid
+    // function literal.
+    if (!isTerminator(nextToken)) {
+      if (mayParseFunctionExpressions) {
         if ((identical(kind, FUNCTION_TOKEN) ||
             identical(kind, OPEN_CURLY_BRACKET_TOKEN))) {
           listener.handleNoTypeVariables(next);
           return parseFunctionExpression(token);
+        } else if (identical(kind, KEYWORD_TOKEN) ||
+            identical(kind, IDENTIFIER_TOKEN)) {
+          if (optional('async', nextToken) || optional('sync', nextToken)) {
+            listener.handleNoTypeVariables(next);
+            return parseFunctionExpression(token);
+          }
+          // Recovery
+          // If there is a stray simple identifier in the function expression
+          // because the user is typing (e.g. `() asy {}`) then continue parsing
+          // and allow parseFunctionExpression to report an unexpected token.
+          kind = nextToken.next.kind;
+          if ((identical(kind, FUNCTION_TOKEN) ||
+              identical(kind, OPEN_CURLY_BRACKET_TOKEN))) {
+            listener.handleNoTypeVariables(next);
+            return parseFunctionExpression(token);
+          }
         }
       }
     }
+
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
     token = parseParenthesizedExpression(token);
@@ -4149,7 +4195,7 @@ class Parser {
   }
 
   Token parseExpressionInParenthesis(Token token) {
-    _statementContexts.add(false);
+    _pushContext(NewlineContext.expression);
 
     token = token.next;
     assert(optional('(', token));
@@ -4158,7 +4204,7 @@ class Parser {
     token = ensureCloseParen(token, begin);
     assert(optional(')', token));
 
-    _statementContexts.removeLast();
+    _popContext();
     return token;
   }
 
@@ -4205,8 +4251,6 @@ class Parser {
   /// if not. This is a suffix parser because it is assumed that type arguments
   /// have been parsed, or `listener.handleNoTypeArguments` has been executed.
   Token parseLiteralListSuffix(Token token, Token constKeyword) {
-    _statementContexts.add(false);
-
     Token beforeToken = token;
     Token beginToken = token = token.next;
     assert(optional('[', token) || optional('[]', token));
@@ -4216,6 +4260,9 @@ class Parser {
       listener.handleLiteralList(0, token, constKeyword, token.next);
       return token.next;
     }
+
+    _pushContext(NewlineContext.expression);
+
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
     while (true) {
@@ -4260,7 +4307,7 @@ class Parser {
     mayParseFunctionExpressions = old;
     listener.handleLiteralList(count, beginToken, constKeyword, token);
 
-    _statementContexts.removeLast();
+    _popContext();
 
     return token;
   }
@@ -4278,7 +4325,7 @@ class Parser {
   /// if not. This is a suffix parser because it is assumed that type arguments
   /// have been parsed, or `listener.handleNoTypeArguments` has been executed.
   Token parseLiteralMapSuffix(Token token, Token constKeyword) {
-    _statementContexts.add(false);
+    _pushContext(NewlineContext.expression);
 
     Token beginToken = token = token.next;
     assert(optional('{', beginToken));
@@ -4321,7 +4368,7 @@ class Parser {
     mayParseFunctionExpressions = old;
     listener.handleLiteralMap(count, beginToken, constKeyword, token);
 
-    _statementContexts.removeLast();
+    _popContext();
 
     return token;
   }
@@ -4701,7 +4748,7 @@ class Parser {
   /// ;
   /// ```
   Token parseArguments(Token token) {
-    _statementContexts.add(false);
+    _pushContext(NewlineContext.expression);
 
     Token begin = token = token.next;
     assert(optional('(', begin));
@@ -4756,7 +4803,7 @@ class Parser {
     mayParseFunctionExpressions = old;
     listener.endArguments(argumentCount, begin, token);
 
-    _statementContexts.removeLast();
+    _popContext();
 
     return token;
   }
@@ -5308,7 +5355,7 @@ class Parser {
   /// ;
   /// ```
   Token parseBlock(Token token) {
-    _statementContexts.add(true);
+    _pushContext(NewlineContext.statement);
 
     Token begin = token = ensureBlock(token, null);
     listener.beginBlock(begin);
@@ -5330,7 +5377,7 @@ class Parser {
     assert(optional('}', token));
     listener.endBlock(statementCount, begin, token);
 
-    _statementContexts.removeLast();
+    _popContext();
     return token;
   }
 
@@ -5982,6 +6029,8 @@ class Parser {
   }
 
   void reportRecoverableError(Token token, Message message) {
+//    print(StackTrace.current);
+
     if (token is ErrorToken) {
       reportErrorToken(token);
     } else {

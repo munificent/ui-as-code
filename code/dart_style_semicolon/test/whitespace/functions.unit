@@ -26,8 +26,7 @@ main()
     async  {
   var x = ()   async=> 1;
   y()async  {}
-  var z = ()
- async
+  var z = () async
      {};
 }
 <<<

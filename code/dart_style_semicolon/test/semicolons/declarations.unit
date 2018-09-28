@@ -51,3 +51,22 @@ Function(int)
 <<<
 typedef Foo = void Function(int)
     Function(int);
+>>> field
+class Foo { var field = 1
++ 2}
+<<<
+class Foo {
+  var field = 1 + 2;
+}
+>>> empty constructor
+class Foo { Foo() : super() }
+<<<
+class Foo {
+  Foo() : super();
+}
+>>>
+class Foo { Foo() : a = 1 - 2 }
+<<<
+class Foo {
+  Foo() : a = 1 - 2;
+}
