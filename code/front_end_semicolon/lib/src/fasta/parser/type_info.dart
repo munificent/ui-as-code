@@ -212,7 +212,9 @@ TypeInfo computeType(final Token token, bool required,
       next = next.next;
       if (typeParamOrArg == noTypeParamOrArg &&
           !isGeneralizedFunctionType(next)) {
-        if (required || looksLikeName(next)) {
+        // TODO(semicolon): It doesn't look a type followed by a declaration
+        // if there is a terminator after the prefixed name.
+        if (required || !Parser.isTerminatorAfterType(next) && looksLikeName(next)) {
           // identifier `.` identifier identifier
           return prefixedType;
         } else {
@@ -240,7 +242,9 @@ TypeInfo computeType(final Token token, bool required,
         .computeIdentifierGFT(required);
   }
 
-  if (required || looksLikeName(next)) {
+  // TODO(semicolon): It doesn't look a type followed by a declaration
+  // if there is a terminator after the prefixed name.
+  if (required || !Parser.isTerminatorAfterType(next) && looksLikeName(next)) {
     // identifier identifier
     return simpleType;
   }

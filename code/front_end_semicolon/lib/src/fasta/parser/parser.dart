@@ -343,6 +343,20 @@ class Parser {
     _newlineContexts.removeLast();
   }
 
+  // TODO(semicolon): Hack. Need to access isTerminal() from computeType().
+  static Parser current;
+
+  static bool isTerminatorAfterType(Token token) {
+    // Only ambiguous case is local fn or var decl in block where it could
+    // be a statement expr for an identifier or property access.
+    // TODO(semicolon): This check is a little weird because it means a return
+    // type followed by a name on the next line is allowed at declaration scope
+    // but not in a block.
+    if (current._newlineContexts.last != NewlineContext.statement) return false;
+
+    return current.isTerminator(token);
+  }
+
   // --- End stuff. ---
 
   Listener listener;
@@ -376,7 +390,9 @@ class Parser {
     return cachedRewriter;
   }
 
-  Parser(this.listener);
+  Parser(this.listener) {
+    current = this;
+  }
 
   bool get inGenerator {
     return asyncState == AsyncModifier.AsyncStar ||
@@ -4871,10 +4887,13 @@ class Parser {
       token = token.next;
       if (optional('(', token)) {
         token = token.endGroup.next;
-        return optional('{', token) ||
-            optional('=>', token) ||
-            optional('async', token) ||
-            optional('sync', token);
+
+        // TODO(semicolon)
+        return !isTerminator(token) &&
+            (optional('{', token) ||
+                optional('=>', token) ||
+                optional('async', token) ||
+                optional('sync', token));
       } else if (optional('=>', token)) {
         // Recovery: Looks like a local function that is missing parenthesis.
         return true;
@@ -4885,10 +4904,11 @@ class Parser {
 
   /// Returns true if [token] could be the start of a function body.
   bool looksLikeFunctionBody(Token token) {
-    return optional('{', token) ||
+    // TODO(semicolon)
+    return !isTerminator(token) && (optional('{', token) ||
         optional('=>', token) ||
         optional('async', token) ||
-        optional('sync', token);
+        optional('sync', token));
   }
 
   Token parseExpressionStatementOrConstDeclaration(final Token start) {

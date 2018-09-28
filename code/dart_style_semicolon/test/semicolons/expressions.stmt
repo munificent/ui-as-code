@@ -35,3 +35,23 @@ throw error;
 var names = []
 <<<
 var names = [];
+>>>
+{
+  property.access
+  function()
+}
+<<<
+{
+  property.access;
+  function();
+}
+>>>
+{
+  identifier
+  function()
+}
+<<<
+{
+  identifier;
+  function();
+}

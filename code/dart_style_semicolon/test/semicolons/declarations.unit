@@ -70,3 +70,23 @@ class Foo { Foo() : a = 1 - 2 }
 class Foo {
   Foo() : a = 1 - 2;
 }
+>>>
+main() {
+  prefixed.Type
+  variable
+}
+<<<
+main() {
+  prefixed.Type;
+  variable;
+}
+>>>
+main() {
+  Type
+    variable
+}
+<<<
+main() {
+  Type;
+  variable;
+}
