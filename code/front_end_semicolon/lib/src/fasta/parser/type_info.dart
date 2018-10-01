@@ -202,6 +202,13 @@ TypeInfo computeType(final Token token, bool required,
         .computeSimpleWithTypeArguments(required);
   }
 
+  // TODO(semicolon): Don't treat "final foo\nbar" like the final typed variable
+  // "final foo bar;".
+  if ((optional('var', token) || optional('final', token) ||
+      optional('const', token)) && Parser.current.isTerminator(next.next)) {
+    return noType;
+  }
+
   assert(typeParamOrArg == noTypeParamOrArg);
   next = next.next;
   if (optional('.', next)) {
@@ -214,7 +221,8 @@ TypeInfo computeType(final Token token, bool required,
           !isGeneralizedFunctionType(next)) {
         // TODO(semicolon): It doesn't look a type followed by a declaration
         // if there is a terminator after the prefixed name.
-        if (required || !Parser.isTerminatorAfterType(next) && looksLikeName(next)) {
+        if (required ||
+            !Parser.current.isTerminator(next) && looksLikeName(next)) {
           // identifier `.` identifier identifier
           return prefixedType;
         } else {
@@ -242,9 +250,29 @@ TypeInfo computeType(final Token token, bool required,
         .computeIdentifierGFT(required);
   }
 
-  // TODO(semicolon): It doesn't look a type followed by a declaration
-  // if there is a terminator after the prefixed name.
-  if (required || !Parser.isTerminatorAfterType(next) && looksLikeName(next)) {
+  // TODO(semicolon): In a statement (but not declaration) context, treat a
+  // newline between a "return type" and a "declaration" as significant. Thus
+  // we parse:
+  //
+  //     {
+  //       bool
+  //       thing
+  //     }
+  //
+  // as:
+  //
+  //     {
+  //        bool;
+  //        thing;
+  //     }
+  //
+  // At the top level or in a class body, though, we don't, since a single
+  // identifier can't be a statement expression in that context.
+  if (Parser.isInStatementContext && Parser.current.isTerminator(next)) {
+    return noType;
+  }
+
+  if (required || looksLikeName(next)) {
     // identifier identifier
     return simpleType;
   }

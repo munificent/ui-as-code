@@ -90,3 +90,39 @@ main() {
   Type;
   variable;
 }
+>>> redirecting factory constructor
+class Foo {
+  factory Foo() = Bar
+}
+<<<
+class Foo {
+  factory Foo() = Bar;
+}
+>>>
+class Foo {
+  factory Foo() = Bar<int,
+    double>
+}
+<<<
+class Foo {
+  factory Foo() = Bar<int, double>;
+}
+>>>
+class IDLConstant {
+  var value
+  IDLConstant()
+}
+<<<
+class IDLConstant {
+  var value;
+  IDLConstant();
+}
+>>> const constructor
+class TypingCapability {
+  const TypingCapability(Type upperBound)
+}
+<<<
+class TypingCapability {
+  const TypingCapability(
+      Type upperBound);
+}

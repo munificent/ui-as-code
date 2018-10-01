@@ -55,3 +55,13 @@ var names = [];
   identifier;
   function();
 }
+>>>
+{
+  function()
+  ++prefix
+}
+<<<
+{
+  function();
+  ++prefix;
+}

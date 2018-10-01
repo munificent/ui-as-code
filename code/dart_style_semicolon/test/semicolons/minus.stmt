@@ -28,6 +28,16 @@ fn(a, b
 -c)
 <<<
 fn(a, b - c);
+>>> in assert
+assert(a
+-b);
+<<<
+assert(a - b);
+>>> in assert message
+assert(true, a
+-b);
+<<<
+assert(true, a - b);
 >>> in index operator
 list[a
 -b]

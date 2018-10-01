@@ -346,16 +346,8 @@ class Parser {
   // TODO(semicolon): Hack. Need to access isTerminal() from computeType().
   static Parser current;
 
-  static bool isTerminatorAfterType(Token token) {
-    // Only ambiguous case is local fn or var decl in block where it could
-    // be a statement expr for an identifier or property access.
-    // TODO(semicolon): This check is a little weird because it means a return
-    // type followed by a name on the next line is allowed at declaration scope
-    // but not in a block.
-    if (current._newlineContexts.last != NewlineContext.statement) return false;
-
-    return current.isTerminator(token);
-  }
+  static bool get isInStatementContext =>
+      current._newlineContexts.last == NewlineContext.statement;
 
   // --- End stuff. ---
 
@@ -3321,7 +3313,9 @@ class Parser {
     listener.beginRedirectingFactoryBody(token);
     Token equals = token;
     token = parseConstructorReference(token);
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+    token = ensureTerminator(token);
+//    token = ensureSemicolon(token);
     listener.endRedirectingFactoryBody(equals, token);
     return token;
   }
@@ -5817,6 +5811,8 @@ class Parser {
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
 
+    _pushContext(NewlineContext.expression);
+
     token = parseExpression(token);
     if (optional(',', token.next)) {
       token = token.next;
@@ -5844,6 +5840,8 @@ class Parser {
         token = endGroup;
       }
     }
+
+    _popContext();
 
     assert(optional(')', token));
     mayParseFunctionExpressions = old;

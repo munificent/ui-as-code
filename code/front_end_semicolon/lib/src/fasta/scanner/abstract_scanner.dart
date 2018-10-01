@@ -97,7 +97,6 @@ abstract class AbstractScanner implements Scanner {
     TokenType.PERIOD_PERIOD,
     TokenType.PLUS,
     TokenType.PLUS_EQ,
-    TokenType.PLUS_PLUS,
     TokenType.QUESTION,
     TokenType.QUESTION_PERIOD,
     TokenType.QUESTION_QUESTION,
