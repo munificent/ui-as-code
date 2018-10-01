@@ -774,6 +774,12 @@ class ComplexTypeParamOrArgInfo extends TypeParamOrArgInfo {
         // Missing comma. Report error, insert comma, and continue looping.
         next = parseMissingComma(token, parser);
       }
+
+      // TODO(semicolon): Mega-hack. Something about optional semicolons in
+      // computeType() causes this to not make progress and get stuck in an
+      // infinite loop in some erroneous code. Just bail if we're obviously
+      // stuck.
+      if (count > 20) break;
     }
     Token endGroup = beforeEnd.next;
     parser.listener.endTypeArguments(count, start, endGroup);
