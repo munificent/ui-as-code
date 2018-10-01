@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:front_end/src/fasta/parser/parser.dart';
 
 import 'package:dart_style/src/dart_formatter.dart';
 import 'package:dart_style/src/exceptions.dart';
@@ -68,6 +69,12 @@ void main(List<String> args) {
   parser.addFlag("profile", negatable: false, hide: true);
   parser.addFlag("transform", abbr: "t", negatable: false, hide: true);
 
+  parser.addFlag("optional-semicolons",
+      help: "Whether the parser should treat semicolons as optional.");
+
+  parser.addOption("output",
+      abbr: "o", help: "Directory to write output files to.");
+
   ArgResults argResults;
   try {
     argResults = parser.parse(args);
@@ -128,6 +135,9 @@ void main(List<String> args) {
     reporter = OutputReporter.overwrite;
   } else if (argResults["machine"]) {
     reporter = OutputReporter.printJson;
+  } else if (argResults.wasParsed("output")) {
+    reporter =
+        OutputReporter.writeTo(argResults.rest.first, argResults["output"]);
   }
 
   if (argResults["profile"]) {
@@ -176,6 +186,8 @@ void main(List<String> args) {
   if (argResults.wasParsed("stdin-name") && !argResults.rest.isEmpty) {
     usageError(parser, "Cannot pass --stdin-name when not reading from stdin.");
   }
+
+  Parser.optionalSemicolons = argResults["optional-semicolons"] as bool;
 
   var options = new FormatterOptions(reporter,
       indent: indent,

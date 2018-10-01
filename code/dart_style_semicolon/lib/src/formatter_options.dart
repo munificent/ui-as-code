@@ -7,6 +7,9 @@ library dart_style.src.formatter_options;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
+import 'exceptions.dart';
 import 'source_code.dart';
 import 'style_fix.dart';
 
@@ -51,6 +54,10 @@ abstract class OutputReporter {
   /// Overwrites each file with its formatted result.
   static final OutputReporter overwrite = new _OverwriteReporter();
 
+  /// Overwrites each file with its formatted result.
+  static OutputReporter writeTo(String from, String to) =>
+      _WriteToReporter(from, to);
+
   /// Describe the directory whose contents are about to be processed.
   void showDirectory(String path) {}
 
@@ -68,6 +75,13 @@ abstract class OutputReporter {
   /// If the contents of the file are the same as the formatted output,
   /// [changed] will be false.
   void afterFile(File file, String label, SourceCode output, {bool changed});
+
+  void onException(File file, String label, FormatterException exception) {
+    var color = Platform.operatingSystem != "windows" &&
+        stdioType(stderr) == StdioType.terminal;
+
+    stderr.writeln(exception.message(color: color));
+  }
 }
 
 /// Prints only the names of files whose contents are different from their
@@ -131,7 +145,7 @@ class _OverwriteReporter extends _PrintReporter {
             "${err.osError.message} (error code ${err.osError.errorCode})");
       }
     } else {
-      print("Unchanged $label");
+//      print("Unchanged $label");
     }
   }
 }
@@ -160,6 +174,47 @@ abstract class _ReporterDecorator implements OutputReporter {
 
   void afterFile(File file, String label, SourceCode output, {bool changed}) {
     _inner.afterFile(file, label, output, changed: changed);
+  }
+
+  void onException(File file, String label, FormatterException exception) {
+    _inner.onException(file, label, exception);
+  }
+}
+
+class _WriteToReporter extends _PrintReporter {
+  final String _from;
+  final String _to;
+
+  _WriteToReporter(this._from, this._to);
+
+  void afterFile(File file, String label, SourceCode output, {bool changed}) {
+    var relative = p.relative(file.path, from: _from);
+    var outPath = p.join(_to, relative);
+
+    try {
+      Directory(p.dirname(outPath)).createSync(recursive: true);
+      File(outPath).writeAsStringSync(output.text);
+      print("Wrote $outPath");
+    } on FileSystemException catch (err) {
+      stderr.writeln("Could not write $outPath: "
+          "${err.osError.message} (error code ${err.osError.errorCode})");
+    }
+  }
+
+  void onException(File file, String label, FormatterException exception) {
+    var relative = p.relative(file.path, from: _from);
+    var outPath = p.join(_to, relative);
+
+    try {
+      Directory(p.dirname(outPath)).createSync(recursive: true);
+      var text =
+          exception.message().split("\n").map((line) => "// $line").join("\n");
+      File(outPath).writeAsStringSync(text);
+      print("Error $outPath");
+    } on FileSystemException catch (err) {
+      stderr.writeln("Could not write $outPath: "
+          "${err.osError.message} (error code ${err.osError.errorCode})");
+    }
   }
 }
 

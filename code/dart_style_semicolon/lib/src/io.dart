@@ -79,10 +79,7 @@ bool processFile(FormatterOptions options, File file, {String label}) {
         .afterFile(file, label, output, changed: source.text != output.text);
     return true;
   } on FormatterException catch (err) {
-    var color = Platform.operatingSystem != "windows" &&
-        stdioType(stderr) == StdioType.terminal;
-
-    stderr.writeln(err.message(color: color));
+    options.reporter.onException(file, label, err);
   } on UnexpectedOutputException catch (err) {
     stderr.writeln('''Hit a bug in the formatter when formatting $label.
 $err

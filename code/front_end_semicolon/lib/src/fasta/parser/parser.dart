@@ -278,8 +278,13 @@ enum NewlineContext {
 /// would handle such errors in later phases. We hope that these cases will go
 /// away as Fasta matures.
 class Parser {
+  static bool optionalSemicolons = true;
+
   // TODO(semicolon): Stuff I added:
   bool isTerminator(Token token) {
+    // Must be enabled.
+    if (!optionalSemicolons) return false;
+
     // If we're not in a statement context (i.e. parsing an expression in a
     // place where it could be terminated by a ";"), then no tokens are
     // terminators.
