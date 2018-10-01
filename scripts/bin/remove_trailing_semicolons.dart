@@ -7,6 +7,10 @@ import 'package:path/path.dart' as p;
 
 import 'package:ui_as_code_tools/parser.dart';
 
+var trailingRegex = RegExp(r";$");
+var beforeCommentRegex = RegExp(r";(\s*//.*)$");
+var beforeBraceRegex = RegExp(r";(\s*})");
+
 void main(List<String> arguments) {
   forEachDartFile(arguments[0], (file, relative) {
     print(relative);
@@ -15,9 +19,9 @@ void main(List<String> arguments) {
 
     var buffer = new StringBuffer();
     for (var line in file.readAsLinesSync()) {
-      if (line.endsWith(";")) {
-        line = line.substring(0, line.length - 1);
-      }
+      line = line.replaceAll(trailingRegex, "");
+      line = line.replaceAllMapped(beforeCommentRegex, (match) => match.group(1));
+      line = line.replaceAllMapped(beforeBraceRegex, (match) => match.group(1));
 
       buffer.writeln(line);
     }
