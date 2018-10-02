@@ -126,3 +126,31 @@ class TypingCapability {
   const TypingCapability(
       Type upperBound);
 }
+>>> should preserve whitespace
+import 'dart:io' as system
+
+// this is a test
+
+void main() {
+  killPid(system.pi); // .
+}
+<<<
+import 'dart:io' as system;
+
+// this is a test
+
+void main() {
+  killPid(system.pi); // .
+}
+>>>
+class Foo {
+  Foo()
+
+  int field
+}
+<<<
+class Foo {
+  Foo();
+
+  int field;
+}

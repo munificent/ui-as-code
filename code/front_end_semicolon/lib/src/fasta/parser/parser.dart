@@ -307,7 +307,7 @@ class Parser {
     if (isTerminator(token)) {
       return rewriter.insertToken(
           token.previous,
-          new SyntheticToken(TokenType.SEMICOLON, token.charOffset));
+          new SyntheticToken(TokenType.SEMICOLON, token.previous.charOffset));
     }
 
     // Not a terminator.
@@ -334,7 +334,7 @@ class Parser {
     }
 
     return rewriter.insertToken(
-        token, new SyntheticToken(TokenType.SEMICOLON, next.charOffset));
+        token, new SyntheticToken(TokenType.SEMICOLON, token.charOffset));
   }
 
   final List<NewlineContext> _newlineContexts = [NewlineContext.declaration];
