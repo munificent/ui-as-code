@@ -19,7 +19,13 @@ void main(List<String> arguments) {
 
     var buffer = new StringBuffer();
     for (var line in file.readAsLinesSync()) {
-      line = line.replaceAll(trailingRegex, "");
+      // Hackish. Don't remove trailing semicolons in code samples in doc
+      // comments, commented out code, etc. Minimizes spurious diffs between
+      // the two formatted corpora.
+      if (!line.contains("//")) {
+        line = line.replaceAll(trailingRegex, "");
+      }
+
       line = line.replaceAllMapped(beforeCommentRegex, (match) => match.group(1));
       line = line.replaceAllMapped(beforeBraceRegex, (match) => match.group(1));
 
