@@ -65,3 +65,23 @@ var names = [];
   function();
   ++prefix;
 }
+>>> split before "as"
+a
+as b
+<<<
+a as b;
+>>> split after "as"
+a as
+b
+<<<
+a as b;
+>>> split before "is"
+a
+is b
+<<<
+a is b;
+>>> split after "is"
+a is
+b
+<<<
+a is b;

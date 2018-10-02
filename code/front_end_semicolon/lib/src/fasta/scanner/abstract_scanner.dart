@@ -107,6 +107,8 @@ abstract class AbstractScanner implements Scanner {
     TokenType.STAR_EQ,
     TokenType.TILDE_SLASH,
     TokenType.TILDE_SLASH_EQ,
+    TokenType.AS,
+    TokenType.IS,
   ].toSet();
 
   // TODO(semicolon): Stuff I added:

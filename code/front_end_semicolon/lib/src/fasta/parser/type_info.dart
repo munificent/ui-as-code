@@ -268,7 +268,8 @@ TypeInfo computeType(final Token token, bool required,
   //
   // At the top level or in a class body, though, we don't, since a single
   // identifier can't be a statement expression in that context.
-  if (Parser.isInStatementContext && Parser.current.isTerminator(next)) {
+  if (!required && Parser.isInStatementContext &&
+      Parser.current.isTerminator(next)) {
     return noType;
   }
 
