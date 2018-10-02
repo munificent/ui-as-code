@@ -85,3 +85,13 @@ a is
 b
 <<<
 a is b;
+>>>
+{
+  "adjacent"
+  "string"
+}
+<<<
+{
+  "adjacent"
+      "string";
+}

@@ -26,6 +26,10 @@ main() {
 }
 <<<
 {
-  bool isValidExtension(final String path)
-      => extensions.any((final String extension) => path.toLowerCase().endsWith("${extension.toLowerCase()}"));
+  bool isValidExtension(
+          final String path) =>
+      extensions.any((final String
+              extension) =>
+          path.toLowerCase().endsWith(
+              "${extension.toLowerCase()}"));
 }

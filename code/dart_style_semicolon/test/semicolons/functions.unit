@@ -74,7 +74,10 @@ var f = (a)
 => 1
 }
 <<<
-parse error
+main() {
+  var a = "a";
+  var f = (a) => 1;
+}
 >>> but not in expr-only context
 main() {
 var a = "a"

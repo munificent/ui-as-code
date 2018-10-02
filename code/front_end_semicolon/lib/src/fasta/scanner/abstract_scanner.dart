@@ -33,6 +33,8 @@ import 'token_constants.dart';
 import 'characters.dart';
 
 abstract class AbstractScanner implements Scanner {
+  // TODO(semicolon): Stuff I added:
+
   // TODO(semicolon): Super hack. Need to plumb some scanner state over to the
   // parser so I can tell which tokens have newlines between them. I don't want
   // to fork kernal and analyzer to snake it through, so just stuffing the last
@@ -85,6 +87,9 @@ abstract class AbstractScanner implements Scanner {
     TokenType.GT_EQ,
     TokenType.GT_GT,
     TokenType.GT_GT_EQ,
+    // TODO: Not allowing this to be a terminator might be a little weird if we
+    // ever want to allow functions with "=>" and no leading parameter list.
+    TokenType.FUNCTION,
     // TODO: Can be a terminator because of generics: `<int>[]`.
 //    TokenType.LT,
     TokenType.LT_EQ,
@@ -111,11 +116,14 @@ abstract class AbstractScanner implements Scanner {
     TokenType.IS,
   ].toSet();
 
-  // TODO(semicolon): Stuff I added:
   bool isTerminator(Token token) {
-//    print("isterm ${token.previous} (${_getLine(token.previous.offset)}) -> "
+//    var result = isTerminator_(token);
+//    print("isterm $result ${token.previous} (${_getLine(token.previous.offset)}) -> "
 //        "${token} (${_getLine(token.offset)})");
-
+//    return result;
+//  }
+//
+//  bool isTerminator_(Token token) {
     // "}" is always implicitly a terminator.
     if (token.type == TokenType.CLOSE_CURLY_BRACKET) return true;
 
