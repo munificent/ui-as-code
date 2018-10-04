@@ -27,8 +27,9 @@ var args = testArgs.toList()
 ```
 
 The cascade operator does help somewhat, but it's still pretty cumbersome. It
-feels imperative when it should be declarative. The wants to say *what* the list
-is, but they are forced to write how it should be *built*, one step at a time.
+feels imperative when it should be declarative. The user wants to say *what* the
+list is, but they are forced to write how it should be *built*, one step at a
+time.
 
 With this proposal, it becomes:
 
@@ -45,10 +46,10 @@ It's not as common, but examples also occur in Flutter UI code, like:
 
 ```dart
 Widget build(BuildContext context) {
-  return new CupertinoPageScaffold(
-    child: new ListView(
-      children: <Widget>[
-        new Tab2Header(),
+  return CupertinoPageScaffold(
+    child: ListView(
+      children: [
+        Tab2Header(),
       ]..addAll(buildTab2Conversation()),
     ),
   );
@@ -59,10 +60,10 @@ That becomes:
 
 ```dart
 Widget build(BuildContext context) {
-  return new CupertinoPageScaffold(
-    child: new ListView(
-      children: <Widget>[
-        new Tab2Header(),
+  return CupertinoPageScaffold(
+    child: ListView(
+      children: [
+        Tab2Header(),
         ...buildTab2Conversation(),
       ],
     ),
@@ -137,90 +138,139 @@ Note that a *spread entry* for a map is an expression, not a key/value pair.
 
 ## Static Semantics
 
-List and map literals are effectively syntactic sugar over the base imperative
-List and Map APIs. This proposal makes that explicit by specifying collection literals as a syntax-directed transformation to those APIs.
+Since the spread is unpacked and its individual elements added to the containing
+collection, we don't require the spread expression *itself* to be assignable to
+the collection's type. For example, this is allowed:
+
+```dart
+var numbers = <num>[1, 2, 3];
+var ints = <int>[...numbers];
+```
+
+This works because the individual elements in `numbers` do happen to have the
+right type even though the list that contains them does not. However, the spread
+object does need to be "spreadable"&mdash;it must be some kind of Iterable for a
+list literal or a Map for a map literal.
+
+It is a static error if:
+
+*   A spread element in a list literal has a static type that is not assignable
+    to `Iterable<Object>`.
+
+*   If a list spread element's static type implements `Iterable<T>` for some `T`
+    and `T` is not assignable to the element type of the list.
+
+*   A spread element in a map literal has a static type that is not assignable
+    to `Map<Object, Object>`.
+
+*   If a map spread element's static type implements `Map<K, V>` for some `K`
+    and `V` and `K` is not assignable to the key type of the map or `V` is not
+    assignable to the value type of the map.
+
+### Const spreads
+
+Spread elements are not allowed in const lists or maps. Because the spread must
+be imperatively unpacked, this could require arbitrary code to be executed at
+compile time:
+
+```dart
+class InfiniteSequence implements Iterable<int> {
+  const InfiniteSequence();
+
+  Iterator<int> get iterator {
+    return () sync* {
+      var i = 0;
+      while (true) yield i ++;
+    }();
+  }
+}
+
+const forever = [InfiniteSequence()];
+```
 
 ### Type inference
 
-However, type inference does get some special support. If not already known, the
-static type of a list is inferred from its elements:
+Inference propagates upwards and downwards like you would expect:
 
-```dart
-var list = [1, 2.3];
-```
+*   If a list literal has a downwards inference type of `List<T>` for some `T`,
+    then the downwards inference context type of a spread element in that list
+    is `Iterable<T>`.
 
-Here, `list` has type `List<num>`, since `num` is the least upper bound of `1`
-and `2.3`.
+*   If a spread element in a list literal has type `Iterable<T>` for some `T`,
+    then the upwards inference element type is `T`.
 
-If the spread element's expression has a type that implements `Iterable<T>` for
-some `T`, then the spread element type is `T`. Otherwise, the spread element
-type is `dynamic`.
+*   If a map literal has a downwards inference type of `Map<K, V>` for some `K`
+    and `V`, then the downwards inference context type of a spread element in
+    that map is `Map<K, V>`.
 
-**todo: finish describing how this interacts with upwards and downwards
-inference.**
-
-### Syntax-directed transformation
-
-A list literal is syntactic sugar for building a list imperatively using the `List` API. After type inference has completed, a list literal is transformed like so:
-
-1.  Start with `List<T>()`.
-2.  For each element in the list:
-
-    1.  If the element is a spread element, append `..addAll(element)`.
-    2.  Else, append `..add(element)`.
-
-For example, the list literal:
-
-```dart
-[1, ..."234".runes, 5]
-```
-
-Transforms to:
-
-```
-List<int>()..add(1)..addAll("234".runes)..add(5)
-```
-
-This desugaring implies that the list is grown dynamically. An implementation
-is, of course, free to optimize this and pre-allocate a list of the correct
-capacity when it's size is statically known. Note that when spread arguments
-come into play, it's not longer always possible to statically tell the final
-size of the resulting flattened list.
-
-Map literals are similar:
-
-1.  Start with `Map<K, V>()`.
-2.  For each entry in the map:
-
-    1.  If the entry is a spread entry, append `..addAll(entry)`.
-    2.  Else the entry is a `name` `value` pair. Append
-        `..addEntries([MapEntry<K, V>(key, value)])`.
-
-        (Yeah, that's pretty verbose. `[]=` would be better, but that doesn't
-        support cascades.)
-
-Thus, this:
-
-```dart
-var first = {"key": "value"};
-var second = {"a": "b", ...first, "c": "d"};
-```
-
-Transforms to:
-
-```dart
-var first = Map<String, String>()
-  ..addEntries([MapEntry<String, String>("key", "value")]);
-var second = Map<String, String>()
-  ..addEntries([MapEntry<String, String>("a", "b")])
-  ..addAll(first)
-  ..addEntries([MapEntry<String, String>("c", "d")]);
-```
+*   If a spread element in a map literal has type `Map<K, V>` for some `K` and
+    `V`, then the upwards inference key type is `K` and the value type is `V`.
 
 ## Dynamic Semantics
 
-There are no dynamic semantics. Once the literals have been transformed to the
-base API, they are type-checked and executed in terms of that.
+The new dynamic semantics are a superset of the original behavior:
+
+### Lists
+
+A list literal `<E>[elem_1 ... elem_n]` is evaluated as follows:
+
+1.  Create a fresh instance of `list` of a class that implements `List<E>`.
+
+    An implementation is, of course, free to optimize pre-allocate a list of the
+    correct capacity when its size is statically known. Note that when spread
+    arguments come into play, it's no longer always possible to statically tell
+    the final size of the resulting flattened list.
+
+1.  For each `element` in the list literal:
+
+    1.  Evaluate the element's expression to a value `value`.
+
+    1.  If `element` is a spread element:
+
+        1.  Evaluate `value.iterator` to a value `iterator`.
+
+        1.  Loop:
+
+            1.  If `iterator.moveNext()` returns `false`, exit the loop.
+
+            1.  Evaluate `iterator.current` and append the result to `list`.
+
+    1.  Else:
+
+        1.  Append `value` to `list`.
+
+1.  The result of the literal expression is `list`.
+
+### Maps
+
+A map literal of the form `<K, V>{entry_1 ... entry_n}` is evaluated as follows:
+
+1.  Allocate a fresh instance `map` of a class that implements `LinkedHashMap<K,
+    V>`.
+
+1.  For each `entry` in the map literal:
+
+    1.  If `entry` is a spread element:
+
+        1.  Evaluate `entry.entries.iterator` to a value `iterator`.
+
+        1.  Loop:
+
+            1.  If `iterator.moveNext()` returns `false`, exit the loop.
+
+            1.  Evaluate `iterator.current` to a value `newEntry`.
+
+            1.  Call `map[newEntry.key] = value`.
+
+    1.  Else, `entry` has form `e1: e2`:
+
+        1.  Evaluate `e1` to a value `key`.
+
+        1.  Evaluate `e2` to a value `value`.
+
+        1.  Call `map[key] = value`.
+
+1.  The result of the map literal expression is `map`.
 
 ## Migration
 
@@ -234,7 +284,7 @@ like `[stuff]..addAll(more)` and transforms it to use `...` instead.
 
 This proposal is technically not dependent on "Parameter Freedom", but it would
 be strange to support spread arguments in collection literals but nowhere else.
-We probably won't both. However, because they don't depend on each other, it's
+We probably want both. However, because they don't depend on each other, it's
 possible to implement them in parallel.
 
 Before committing to do that, we should talk to the implementation teams about
