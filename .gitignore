@@ -2,3 +2,11 @@ scripts/.packages
 
 # In-progress stuff that isn't ready to be committed yet.
 flux/
+
+# Don't commit big generated corpora.
+data/optional-semicolons/baseline
+data/optional-semicolons/original
+data/optional-semicolons/parse-baseline
+data/optional-semicolons/parse-original
+data/optional-semicolons/parse-stripped
+data/optional-semicolons/stripped

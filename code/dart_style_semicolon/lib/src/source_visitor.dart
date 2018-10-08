@@ -2021,6 +2021,10 @@ class SourceVisitor extends ThrowingAstVisitor {
     builder.startSpan();
 
     modifier(node.keyword);
+    // TODO(semicolon): Don't allow a newline between a variable's type and
+    // name since that becomes significant, at least inside a statement context.
+    // This is kind of bad because it would be nice to be able to split here.
+//    visit(node.type, after: space);
     visit(node.type, after: soloSplit);
 
     builder.endSpan();

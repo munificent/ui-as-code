@@ -33,7 +33,7 @@ void forEachDartFile(
     if (!entry.path.endsWith(".dart")) continue;
 
     // Don't care about tests.
-    if (entry.path.contains("/test/")) continue;
+//    if (entry.path.contains("/test/")) continue;
 
     // Don't care about cached packages.
     if (entry.path.contains("/.dart_tool/")) continue;

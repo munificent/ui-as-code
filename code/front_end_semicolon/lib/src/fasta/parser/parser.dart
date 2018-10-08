@@ -290,12 +290,19 @@ class Parser {
     // terminators.
     if (_newlineContexts.last == NewlineContext.expression) return false;
 
-    // Ignore newlines before "{" and "=>" in declaration space since we don't
-    // have expression statements. We know those must be part of the preceding
-    // declaration.
+    // In a statement context, a "{" on its own line likely begins a block.
+    // In a declaration context, that's not valid. Ignore the newline so that
+    // we can more robustly handle:
+    //
+    //     function()
+    //     {
+    //       body;
+    //     }
+    //
+    // Properly formatted code never looks like that, but this lets us handle
+    // it more gracefully.
     if (_newlineContexts.last == NewlineContext.declaration) {
       if (token.type == TokenType.OPEN_CURLY_BRACKET) return false;
-      if (token.type == TokenType.FUNCTION) return false;
     }
 
     return AbstractScanner.lastScanner.isTerminator(token);
