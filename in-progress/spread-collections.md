@@ -7,15 +7,9 @@ and map literals to insert multiple elements.
 
 ## Motivation
 
-The "Parameter Freedom" proposal adds rest parameters to remove redundant
-collection literals when calling APIs that expect a series of "children"
-arguments. If you have an API that expects rest arguments but your values are
-already bottled up in a list, you need a way to "unpack" that to use that API.
-So the proposal adds a "spread argument" syntax, `...`.
-
-If you have that, it's natural to support the same syntax in collection literals
-in order to insert a series of list elements or map entries in the middle of a
-list or map.
+List and map literals are excellent when you want to create a new collection out
+of individual items. But, often some of those existing items are already stored
+in another collection.
 
 Code like this is pretty common:
 
@@ -42,7 +36,10 @@ var args = [
 ];
 ```
 
-It's not as common, but examples also occur in Flutter UI code, like:
+The `...` syntax evaluates the following expression and unpacks the resulting
+values and inserts them into the new list at that position.
+
+Use cases for this also occur in Flutter UI code, like:
 
 ```dart
 Widget build(BuildContext context) {
@@ -94,6 +91,55 @@ var params = {
 };
 ```
 
+In this case, the `...` takes an expression that yields a map and inserts all of
+that map's entries into the new map.
+
+### Null-aware spread
+
+In the above example, what happens if `uri.queryParameters` returns null? We
+could treat that as a runtime error, or silently treat null like an empty
+collection.
+
+The latter has some convenience appeal, but clashes with the rest of the
+language where null is never silently ignored. A null if statemt condition
+expression causes an exception instead of being implicitly treated as false as
+in most other languages.
+
+Most of the time, if you have a null in a place you don't expect, the sooner you
+can find out, the better. Even JavaScript does not silently ignore null in
+spreads. So I don't think we either. But, when looking through a corpus for
+places where a spread argument would be useful, I found a number of examples
+like:
+
+```dart
+var command = [
+  engineDartPath,
+  '--target=flutter',
+];
+if (extraFrontEndOptions != null) {
+  command.addAll(extraFrontEndOptions);
+}
+command.add(mainPath);
+```
+
+To handle these gracefully, we support a `...?` "null-aware spread" operator. In
+cases where the spread expression evaluates to null, that expands to an empty
+collection instead of throwing a runtime expression.
+
+That turns the example to:
+
+```dart
+var command = [
+  engineDartPath,
+  '--target=flutter',
+  ...?extraFrontEndOptions,
+  mainPath
+];
+```
+
+More complex conditional expressions than simple null checks come up often too,
+but those are out of scope for this proposal.
+
 ## Syntax
 
 We extend the list grammar to allow *spread elements* in addition to regular
@@ -110,13 +156,14 @@ listElementList:
 
 listElement:
   expression |
-  '...' expression
+  ( '...' | '...?' ) expression
   ;
 ```
 
 Instead of `expressionList`, this uses a new `listElementList` rule since
-`expressionList` is used elsewhere in teh grammar where spreads aren't allowed.
-Each element in a list is either a normal expression or a spread element.
+`expressionList` is used elsewhere in the grammar where spreads aren't allowed.
+Each element in a list is either a normal expression or a *spread element*. If
+the spread element starts with `...?`, it's a *null-aware spread element*.
 
 The changes for map literals are similar:
 
@@ -130,11 +177,13 @@ mapLiteralEntryList:
 
 mapLiteralEntry:
   expression ':' expression |
-  '...' expression
+  ( '...' | '...?' ) expression
   ;
 ```
 
 Note that a *spread entry* for a map is an expression, not a key/value pair.
+Similar to lists, a spread entry that starts with `...?` is a *null-aware spread
+entry*.
 
 ## Static Semantics
 
@@ -227,6 +276,9 @@ A list literal `<E>[elem_1 ... elem_n]` is evaluated as follows:
 
     1.  If `element` is a spread element:
 
+        1.  If `element` is null-aware and `value` is null, continue to the next
+            element in the literal.
+
         1.  Evaluate `value.iterator` to a value `iterator`.
 
         1.  Loop:
@@ -252,7 +304,12 @@ A map literal of the form `<K, V>{entry_1 ... entry_n}` is evaluated as follows:
 
     1.  If `entry` is a spread element:
 
-        1.  Evaluate `entry.entries.iterator` to a value `iterator`.
+        1.  Evaluate the entry's expression to a value `value`.
+
+        1.  If `entry` is null-aware and `value` is null, continue to the next
+            entry in the literal.
+
+        1.  Evaluate `value.entries.iterator` to a value `iterator`.
 
         1.  Loop:
 
@@ -271,6 +328,8 @@ A map literal of the form `<K, V>{entry_1 ... entry_n}` is evaluated as follows:
         1.  Call `map[key] = value`.
 
 1.  The result of the map literal expression is `map`.
+
+
 
 ## Migration
 
@@ -294,15 +353,21 @@ feasibility. I would be surprised if there were major concerns.
 
 ### Why the `...` syntax?
 
-Both Java and JavaScript use `...` for rest parameters and [spread
-arguments][js], so I think it is the most familiar syntax to users likely to
-come to Dart.
+[Java][java rest], [JavaScript][js rest] use `...` for declaring rest parameters
+in functions. JavaScript uses `...` for [spread arguments and collection
+elements][js], so I think it is the most familiar syntax to users likely to come
+to Dart.
+
+[java rest]: https://docs.oracle.com/javase/8/docs/technotes/guides/language/varargs.html
+
+[js rest]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/rest_parameters
 
 [js]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax
 
 In Dart, `sync*`, `async*`, and `yield*`, all imply that `*` means "many". We
-could use that instead of `...`, which is what Scala and Ruby do. However, I
-think that is harder to read in contexts where an expression is expected:
+could use that instead of `...`. This is the syntax Python, Scala, Ruby, and
+Kotlin use. However, I think it's harder to read in contexts where an expression
+is expected:
 
 ```dart
 var args = [
@@ -314,44 +379,143 @@ var args = [
 ```
 
 `*` is already a common infix operator, so having it mean something entirely
-different in prefix position feels like the wrong approach. If this is
-contentious, it's an easy question to get data on with a usability study.
+different in prefix position feels confusing. If this is contentious, it's an
+easy question to get data on with a usability study.
 
-### Null-aware spread
+### Why `...` in prefix position?
 
-In this proposal, you will get a runtime error if a spread argument expression
-evaluates to null. The null is passed to `addAll()`, which tries to call
-`.iterator` on it, and bad things happen.
-
-I believe this is the right *default* behavior. However, in looking through a
-corpus for places where a spread argument would be useful, I found a number of
-examples like:
+Assuming we want to use `...`, we still have the choice of putting it before or
+after the expression:
 
 ```dart
-var command = [
-  engineDartPath,
-  '--target=flutter',
-];
-if (extraFrontEndOptions != null)
-  command.addAll(extraFrontEndOptions);
-command.add(mainPath);
+var before = [1, ...more, 3];
+var after = [1, more..., 3];
 ```
 
-The null check means, this example can't take advantage of spread. We could add
-a `...?` "null-aware spread" operator. In cases where the spread expression
-evaluates to null, that expands to an empty collection instead of throwing a
-runtime expression.
+Putting it before has these advantages (some of which are marginal or dubious):
 
-That would turn the above example to:
+*   It's what JavaScript does. If we assume most people coming to Dart and
+    familiar with a spread operator learned it from JS, that makes it the most
+    familiar syntax.
 
-```dart
-var command = [
-  engineDartPath,
-  '--target=flutter',
-  ...?extraFrontEndOptions,
-  mainPath
-];
-```
+*   When skimming a long multi-line collection literal, the `...` are on the
+    left side of the page, so it's easy to see which elements are single and
+    which are spread:
 
-More complex conditional expressions than simple null checks come up often too,
-but those are out of scope for this proposal.
+    ```dart
+    var arguments = [
+      executable,
+      command,
+      ...defaultOptions,
+      debugFlag,
+      ...flags,
+      filePath
+    ];
+    ```
+
+    With a postfix `...`, you have to find the ends of each element expression,
+    which likely don't all line up. It's possible to overlook the trailing `...`
+    if the preceding expression is particularly long.
+
+    In practice, this is rare. I scraped a large corpus looking for calls to
+    `addAll()` on collection literals (which are obvious candidates for this new
+    syntax). 80% of the arguments to those are 36 characters or shorter. The
+    median expression length was 15 characters.
+
+*   It tells the reader what the expression is for *before* they read it. If we
+    put the `...` at the end, the reader has to read the entire expression and
+    then realize that it's being spread. With `...` in prefix position, that
+    context is established up front.
+
+    This may be more important for code writers. By putting the `...` first,
+    they are less likely to forget to add the spread at the end by the time they
+    are done writing the expression.
+
+*   It makes it look less like a cascade. Dart allows `..` in infix position to
+    mean something different. The similarity with `...` is already worrisome,
+    but putting the `...` after an expression exacerbates that. It looks kind of
+    like a cascade with a missing name:
+
+    ```dart
+    [things..removeLast()...]
+    ```
+
+    In an IDE, auto-complete is likely to trigger after typing each `.`, which
+    they you then have to cancel out.
+
+*   It makes the precedence less visually confusing. The `...` syntax doesn't
+    really have "operator precedence" because it isn't an operator expression.
+    The syntax is part of the collection literal itself. The latter effectively
+    means it has the lowest "precedence"&mdash;any kind of expression is valid
+    as the spread target, such as:
+
+    ```dart
+    [...a + b]
+    ```
+
+    Here, the `...` applies to the result of the entire `a + b` expression. This
+    isn't likely to occur in practice, but some custom iterable type could also
+    use operator overloading. It doesn't look great either way, but I think the
+    above is marginally less weird looking than:
+
+    ```dart
+    [a + b...]
+    ```
+
+    Dart does have *some* history of low-precedence prefix expressions with
+    `await` and `throw`. The only postfix expressions, `++` and `--` have high
+    precedence.
+
+*   It separates the `...` from the comma. Since commas have a space after, but
+    not before, this ensures the `...` and `,` don't run together as in `[1,
+    more..., 3]`. Not a huge deal, but it's nice to not jam a bunch of
+    punctuation together when possible.
+
+Postfix has some advantages:
+
+*   It's what CoffeeScript does. This isn't a large bonus, obviously, but it
+    does mean some users might be familiar with the syntax.
+
+*   It reads in execution order. If you read `...` to mean "iterate over the
+    spread object", then putting it at the end mirrors the order that it is
+    run. First the spread expression is evaluated, then it is iterated over.
+
+    In particular, this makes null-aware spread operators much less confusing.
+    Consider:
+
+    ```dart
+    [...?foo?.bar]
+    //  | ^ |  ^
+    //  | '-'  |
+    //  '------'
+    ```
+
+    The first `?` in `...?` applies to whether or not evaluating `bar` returns
+    null. The second `?` in `?.` looks at whether `foo` is null. In other words,
+    the existing null-aware syntax is postfix, so it's confusing to add a second
+    null-aware-like syntax that's prefix.
+
+    A postfix form reads nicely from left to right where each `?` applies to the
+    thing before it:
+
+    ```dart
+    [foo?.bar...?]
+    //^ |  ^    |
+    //'-'  '----'
+    ```
+
+The last bullet point is significant, which makes this one of those hard choices
+to make. We have a lot of diffuse pros on one side and an acute but uncommon pro
+on the other.
+
+From looking at a large corpus, my impression is that less than 20% of spread
+uses will be null-aware. Given that, I think it makes sense to aim for the
+readability of the common case and use prefix.
+
+todo: one concern about trailing `...` is that by the time you finish writing the preceding expression, you may forget to add the `...`.
+
+todo: mention this proposal lets you use type inference more. because more gets
+put into the literal, more context for bottom up. less need to create empty
+literal then add.
+
+todo: disallow `...a = b`? would get in the way of later supporting destructuring assignment.
