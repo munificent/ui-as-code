@@ -29,7 +29,8 @@ void main(List<String> arguments) {
   arguments = arguments.toList();
   simplifyNames = arguments.remove("--simplify");
   var allCode = arguments.remove("--all");
-  parsePath(arguments[0], (path) => new Visitor(path, allCode: allCode));
+  parsePath(arguments[0],
+      createVisitor: (path) => new Visitor(path, allCode: allCode));
 
   nestingDepths.printOrdered("Nesting depth");
   print("average = ${nestingDepths.sum / nestingDepths.totalCount}");

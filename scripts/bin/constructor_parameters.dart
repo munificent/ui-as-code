@@ -15,7 +15,7 @@ final listTypePattern = new RegExp(r"\b(Iterable|List)\b");
 final widgetParamCounts = new Histogram<int>();
 
 void main(List<String> arguments) {
-  parsePath(arguments[0], (path) => new Visitor(path));
+  parsePath(arguments[0], createVisitor: (path) => new Visitor(path));
 
   print("${listParamCounts.totalCount} classes");
   for (var i = 0; i < 5; i++) {

@@ -21,7 +21,10 @@ Token tokenizeString(String source) {
   return scanner.tokenize();
 }
 
-void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
+void parsePath(String path,
+    {bool includeTests, AstVisitor<void> Function(String) createVisitor}) {
+  includeTests ??= false;
+
   if (new File(path).existsSync()) {
     _parseFile(new File(path), p.relative(path, from: path), createVisitor);
     return;
@@ -30,8 +33,12 @@ void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
   for (var entry in new Directory(path).listSync(recursive: true)) {
     if (!entry.path.endsWith(".dart")) continue;
 
-    // Don't care about tests.
-    if (entry.path.contains("/test/")) continue;
+    if (!includeTests) {
+      if (entry.path.contains("/test/")) continue;
+      if (entry.path.contains("/sdk/tests/")) continue;
+      if (entry.path.contains("/testcases/")) continue;
+      if (entry.path.endsWith("_test.dart")) continue;
+    }
 
     // Don't care about cached packages.
     if (entry.path.contains("/.dart_tool/")) continue;
