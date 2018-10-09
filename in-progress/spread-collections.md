@@ -329,8 +329,6 @@ A map literal of the form `<K, V>{entry_1 ... entry_n}` is evaluated as follows:
 
 1.  The result of the map literal expression is `map`.
 
-
-
 ## Migration
 
 This is a non-breaking change that purely makes existing semantics more easily
