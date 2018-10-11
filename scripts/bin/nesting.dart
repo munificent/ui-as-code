@@ -6,6 +6,7 @@ import 'package:analyzer/dart/ast/token.dart';
 
 import 'package:ui_as_code_tools/histogram.dart';
 import 'package:ui_as_code_tools/parser.dart';
+import 'package:ui_as_code_tools/visitor.dart';
 
 /// Strings that describe the structure of each nested argument.
 final nestings = new Histogram<String>();
@@ -30,7 +31,7 @@ void main(List<String> arguments) {
   simplifyNames = arguments.remove("--simplify");
   var allCode = arguments.remove("--all");
   parsePath(arguments[0],
-      createVisitor: (path) => new Visitor(path, allCode: allCode));
+      createVisitor: (path) => new NestingVisitor(path, allCode: allCode));
 
   nestingDepths.printOrdered("Nesting depth");
   print("average = ${nestingDepths.sum / nestingDepths.totalCount}");
@@ -41,47 +42,15 @@ void main(List<String> arguments) {
   nestings.printDescending("Argument nesting");
 }
 
-class Visitor extends RecursiveAstVisitor<void> {
-  final String path;
-  bool showedPath = false;
-
+class NestingVisitor extends Visitor {
   final List<String> _stack = [];
 
+  final bool _allCode;
   bool _pushed = false;
-  int _inBuildMethods = 0;
 
-  Visitor(this.path, {bool allCode}) {
-    if (allCode) _inBuildMethods++;
-  }
-
-  bool _isBuildMethod(TypeAnnotation returnType, SimpleIdentifier name,
-      FormalParameterList parameters) {
-    var parameterString = parameters.toString();
-    return returnType.toString() == "Widget" ||
-        parameterString.startsWith("(BuildContext context") ||
-        name.toString().contains("build");
-  }
-
-  @override
-  void visitMethodDeclaration(MethodDeclaration node) {
-    var isBuild = _isBuildMethod(node.returnType, node.name, node.parameters);
-    if (isBuild) _inBuildMethods++;
-
-    super.visitMethodDeclaration(node);
-
-    if (isBuild) _inBuildMethods--;
-  }
-
-  @override
-  void visitFunctionDeclaration(FunctionDeclaration node) {
-    var isBuild = _isBuildMethod(
-        node.returnType, node.name, node.functionExpression.parameters);
-    if (isBuild) _inBuildMethods++;
-
-    super.visitFunctionDeclaration(node);
-
-    if (isBuild) _inBuildMethods--;
-  }
+  NestingVisitor(String path, {bool allCode})
+      : _allCode = allCode ?? false,
+        super(path);
 
   @override
   void visitArgumentList(ArgumentList node) {
@@ -108,7 +77,7 @@ class Visitor extends RecursiveAstVisitor<void> {
         var argName =
             argument is NamedExpression ? argument.name.label.name : "";
 
-        if (_inBuildMethods > 0) argumentNames.add(argName);
+        if (_allCode || isInBuildMethod) argumentNames.add(argName);
 
         if (simplifyNames && argName != "child" && argName != "children") {
           argName = "_";
@@ -170,7 +139,7 @@ class Visitor extends RecursiveAstVisitor<void> {
   }
 
   void _pop() {
-    if (_pushed && _inBuildMethods > 0) {
+    if (_pushed && (_allCode || isInBuildMethod)) {
       nestings.add(_stack.join(" "));
       nestingDepths.add(_stack.length);
       ignoringLists.add(_stack.where((s) => s != "[").length);

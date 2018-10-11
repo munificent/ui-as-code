@@ -7,6 +7,7 @@ import 'package:analyzer/analyzer.dart';
 
 import 'package:ui_as_code_tools/histogram.dart';
 import 'package:ui_as_code_tools/parser.dart';
+import 'package:ui_as_code_tools/visitor.dart';
 
 /// Looks at expressions that could likely be converted to spread operators and
 /// measures their length. "Likely" means calls to `addAll()` where the
@@ -15,7 +16,11 @@ final argumentStrings = Histogram<String>();
 final argumentLengths = Histogram<int>();
 
 void main(List<String> arguments) {
-  parsePath(arguments[0], createVisitor: (path) => new Visitor(path));
+  arguments = arguments.toList();
+  var allCode = arguments.remove("--all");
+
+  parsePath(arguments[0],
+      createVisitor: (path) => new SpreadVisitor(path, allCode: allCode));
 
   argumentStrings.printDescending("Arguments");
   _showLengths("Lengths");
@@ -48,23 +53,25 @@ void _showLengths(String label) {
         cumulativePercent.toStringAsFixed(3).padLeft(7);
 
     var bar = "*" * (count / total * 60).toInt();
-    print("$iString: $countString ($percentString%) ($cumulativePercentString cuml) $bar");
+    print(
+        "$iString: $countString ($percentString%) ($cumulativePercentString cuml) $bar");
   }
 
   print("Median ${argumentLengths.median}");
 }
 
-class Visitor extends RecursiveAstVisitor<void> {
-  final String path;
-  bool showedPath = false;
+class SpreadVisitor extends Visitor {
+  final bool _allCode;
 
-  Visitor(this.path);
+  SpreadVisitor(String path, {bool allCode})
+      : _allCode = allCode ?? false,
+        super(path);
 
   @override
   void visitCascadeExpression(CascadeExpression node) {
     for (var section in node.cascadeSections) {
       if (section is MethodInvocation) {
-        _countCall(section.methodName, node.target, section.argumentList);
+        _countCall(node, section.methodName, node.target, section.argumentList);
       }
     }
 
@@ -73,12 +80,14 @@ class Visitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    _countCall(node.methodName, node.target, node.argumentList);
+    _countCall(node, node.methodName, node.target, node.argumentList);
 
     return super.visitMethodInvocation(node);
   }
 
-  void _countCall(SimpleIdentifier name, Expression target, ArgumentList args) {
+  void _countCall(Expression node, SimpleIdentifier name, Expression target, ArgumentList args) {
+    if (!_allCode && !isInBuildMethod) return;
+
     if (name.name != "addAll") return;
 
     // See if the target is a collection literal.
@@ -93,25 +102,8 @@ class Visitor extends RecursiveAstVisitor<void> {
         argumentStrings.add(arg.toString());
         argumentLengths.add(arg.length);
       }
+
+      printNode(node);
     }
   }
-}
-
-temp() {
-  [].addAll([]);
-  []
-    ..addAll([])
-    ..removeLast()
-    ..addAll([]);
-  [].addAll([]);
-  [].where(null).toList().addAll([]);
-  [].where(null).toList()..addAll([]);
-
-  ({}.addAll({}));
-  ({}
-    ..addAll({})
-    ..remove(null)
-    ..addAll({}));
-
-  Set().addAll([]);
 }

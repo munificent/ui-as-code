@@ -5,6 +5,7 @@ import 'package:analyzer/analyzer.dart';
 
 import 'package:ui_as_code_tools/histogram.dart';
 import 'package:ui_as_code_tools/parser.dart';
+import 'package:ui_as_code_tools/visitor.dart';
 
 /// Looks at constructor declarations to see how many of them take one or more
 /// list-typed parameters. This should help us gauge how important it is to
@@ -31,11 +32,10 @@ void main(List<String> arguments) {
   }
 }
 
-class Visitor extends RecursiveAstVisitor<void> {
-  final String path;
+class ConstructorVisitor extends Visitor {
   bool showedPath = false;
 
-  Visitor(this.path);
+  ConstructorVisitor(String path) : super(path);
 
   void show(
       ClassDeclaration node, ConstructorDeclaration ctor, List<String> params) {

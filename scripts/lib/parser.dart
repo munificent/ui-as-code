@@ -5,11 +5,14 @@ import 'dart:io';
 
 import 'package:analyzer/analyzer.dart';
 import 'package:analyzer/dart/ast/token.dart';
+import 'package:analyzer/source/line_info.dart';
 import 'package:analyzer/src/dart/scanner/reader.dart';
 import 'package:analyzer/src/dart/scanner/scanner.dart';
 import 'package:analyzer/src/generated/parser.dart';
 import 'package:analyzer/src/string_source.dart';
 import 'package:path/path.dart' as p;
+
+import 'visitor.dart';
 
 Token tokenizeString(String source) {
   var errorListener = new _ErrorListener();
@@ -22,7 +25,7 @@ Token tokenizeString(String source) {
 }
 
 void parsePath(String path,
-    {bool includeTests, AstVisitor<void> Function(String) createVisitor}) {
+    {bool includeTests, Visitor Function(String) createVisitor}) {
   includeTests ??= false;
 
   if (new File(path).existsSync()) {
@@ -48,8 +51,8 @@ void parsePath(String path,
   }
 }
 
-void _parseFile(File file, String shortPath,
-    AstVisitor<void> Function(String) createVisitor) {
+void _parseFile(
+    File file, String shortPath, Visitor Function(String) createVisitor) {
   var source = file.readAsStringSync();
 
   var errorListener = new _ErrorListener();
@@ -64,13 +67,16 @@ void _parseFile(File file, String shortPath,
   var parser = new Parser(stringSource, errorListener);
   parser.enableOptionalNewAndConst = true;
 
+  var visitor = createVisitor(shortPath);
+  visitor.bind(source, new LineInfo(scanner.lineStarts));
+
   var node = parser.parseCompilationUnit(startToken);
-  node.accept(createVisitor(shortPath));
+  node.accept(visitor);
 }
 
 /// A simple [AnalysisErrorListener] that just collects the reported errors.
 class _ErrorListener implements AnalysisErrorListener {
   void onError(AnalysisError error) {
-    print(error);
+//    print(error);
   }
 }
