@@ -94,6 +94,29 @@ var params = {
 In this case, the `...` takes an expression that yields a map and inserts all of
 that map's entries into the new map.
 
+### Type inference
+
+A non-obvious extra advantage to this syntax is that it makes type inference
+more powerful. By moving elements out of trailing calls to `addAll()` and into
+the collection literal itself, we have more context available for bottom-up
+inference.
+
+Code like this is fairly common:
+
+```dart
+var containingParts = <String>[]..addAll(info.outputUnit.imports)..add('main');
+```
+
+The `<String>` is necessary because otherwise we can't infer a type for the
+list. With spread, the elements let us infer it:
+
+```dart
+var containingParts = [
+  ...info.outputUnit.imports,
+  'main'
+];
+```
+
 ### Null-aware spread
 
 In the above example, what happens if `uri.queryParameters` returns null? We
@@ -438,7 +461,7 @@ Putting it before has these advantages (some of which are marginal or dubious):
     [things..removeLast()...]
     ```
 
-    In an IDE, auto-complete is likely to trigger after typing each `.`, which
+*   In an IDE, auto-complete is likely to trigger after typing each `.`, which
     they you then have to cancel out.
 
 *   It makes the precedence less visually confusing. The `...` syntax doesn't
@@ -506,14 +529,43 @@ The last bullet point is significant, which makes this one of those hard choices
 to make. We have a lot of diffuse pros on one side and an acute but uncommon pro
 on the other.
 
-From looking at a large corpus, my impression is that less than 20% of spread
-uses will be null-aware. Given that, I think it makes sense to aim for the
-readability of the common case and use prefix.
+To help gauge how this looks in real code, I found a number of places in a
+corpus where this syntax could be used by looking for calls to `.addAll()` on
+collection literals. I converted them to use the prefix and postfix syntax
+[here][spread examples].
 
-todo: one concern about trailing `...` is that by the time you finish writing the preceding expression, you may forget to add the `...`.
+[spread examples]: https://github.com/munificent/ui-as-code/tree/master/examples/spread-collection
 
-todo: mention this proposal lets you use type inference more. because more gets
-put into the literal, more context for bottom up. less need to create empty
-literal then add.
+Only a few cases use `...?`. Some examples do have pretty complex expressions
+where it's easy to overlook a trailing `...`, like:
 
-todo: disallow `...a = b`? would get in the way of later supporting destructuring assignment.
+```dart
+// More...
+              TableRow(
+                children: [
+                  const SizedBox(),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24.0, bottom: 4.0),
+                    child: Text('Ingredients', style: headingStyle)
+                  ),
+                ]
+              ),
+              recipe.ingredients.map(
+                (RecipeIngredient ingredient) {
+                  return _buildItemRow(ingredient.amount, ingredient.description);
+                }
+              )...,
+              TableRow(
+                children: [
+                  const SizedBox(),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24.0, bottom: 4.0),
+                    child: Text('Steps', style: headingStyle)
+                  ),
+                ]
+              ),
+// More...
+```
+
+Here, the `...` almost looks like it's part of the *next* element, the TableRow,
+than the preceding one. Given this, I think `...` is the better choice.
