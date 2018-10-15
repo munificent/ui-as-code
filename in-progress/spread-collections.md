@@ -239,6 +239,9 @@ It is a static error if:
     and `V` and `K` is not assignable to the key type of the map or `V` is not
     assignable to the value type of the map.
 
+If implicit downcasts are disabled, then the "is assignable to" parts here
+become strict subtype checks instead.
+
 ### Const spreads
 
 Spread elements are not allowed in const lists or maps. Because the spread must
