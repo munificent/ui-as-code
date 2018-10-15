@@ -17,6 +17,8 @@ final multiLineFors = [
 ].toSet();
 
 void main(List<String> arguments) {
+  var stripped = 0;
+
   forEachDartFile(arguments[0], (file, relative) {
     print(relative);
     var outPath = p.join(arguments[1], relative);
@@ -24,6 +26,8 @@ void main(List<String> arguments) {
 
     var buffer = new StringBuffer();
     for (var line in file.readAsLinesSync()) {
+      var original = line;
+
       // Super hack. Semicolons are not optional in for statements, but this
       // script can't detect them automatically, so manually check for the
       // known ones.
@@ -53,9 +57,13 @@ void main(List<String> arguments) {
         });
       }
 
+      stripped += original.length - line.length;
+
       buffer.writeln(line);
     }
 
     new File(outPath).writeAsStringSync(buffer.toString());
   });
+
+  print("Removed $stripped semicolons.");
 }
