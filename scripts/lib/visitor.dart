@@ -11,7 +11,7 @@ class Visitor extends RecursiveAstVisitor<void> {
   int _inBuildMethods = 0;
 
   String _source;
-  LineInfo _lineInfo;
+  LineInfo lineInfo;
 
   Visitor(this.path);
 
@@ -20,37 +20,48 @@ class Visitor extends RecursiveAstVisitor<void> {
   bool _isBuildMethod(TypeAnnotation returnType, SimpleIdentifier name,
       FormalParameterList parameters) {
     var parameterString = parameters.toString();
-    return returnType.toString() == "Widget" ||
-        parameterString.startsWith("(BuildContext context") ||
-        name.toString().contains("build");
+
+    if (parameterString.startsWith("(BuildContext context")) return true;
+    if (returnType.toString() == "Widget") return true;
+
+    return false;
   }
 
   void bind(String source, LineInfo info) {
     _source = source;
-    _lineInfo = info;
+    lineInfo = info;
   }
 
   void printNode(AstNode node) {
-    var startLine = _lineInfo.getLocation(node.offset).lineNumber;
-    var endLine = _lineInfo.getLocation(node.end).lineNumber;
+    var startLine = lineInfo.getLocation(node.offset).lineNumber;
+    var endLine = lineInfo.getLocation(node.end).lineNumber;
+
+    startLine = startLine.clamp(0, lineInfo.lineCount - 1);
+    endLine = endLine.clamp(0, lineInfo.lineCount - 1);
 
     print("$path:$startLine");
     for (var line = startLine; line <= endLine; line++) {
       // Note that getLocation() returns 1-based lines, but getOffsetOfLine()
       // expects 0-based.
-      var offset = _lineInfo.getOffsetOfLine(line - 1);
+      var offset = lineInfo.getOffsetOfLine(line - 1);
       // -1 to not include the newline.
-      var end = _lineInfo.getOffsetOfLine(line) - 1;
+      var end = lineInfo.getOffsetOfLine(line) - 1;
+
       print("| ${_source.substring(offset, end)}");
     }
   }
+
+  void beforeVisitBuildMethod(Declaration node) {}
+  void afterVisitBuildMethod(Declaration node) {}
 
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
     var isBuild = _isBuildMethod(node.returnType, node.name, node.parameters);
     if (isBuild) _inBuildMethods++;
 
+    if (isBuild) beforeVisitBuildMethod(node);
     super.visitMethodDeclaration(node);
+    if (isBuild) afterVisitBuildMethod(node);
 
     if (isBuild) _inBuildMethods--;
   }
@@ -61,7 +72,9 @@ class Visitor extends RecursiveAstVisitor<void> {
         node.returnType, node.name, node.functionExpression.parameters);
     if (isBuild) _inBuildMethods++;
 
+    if (isBuild) beforeVisitBuildMethod(node);
     super.visitFunctionDeclaration(node);
+    if (isBuild) afterVisitBuildMethod(node);
 
     if (isBuild) _inBuildMethods--;
   }

@@ -1,6 +1,8 @@
 // Copyright (c) 2018, the Dart project authors.  Please see the AUTHORS file
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
+import 'dart:math' as math;
+
 import 'package:analyzer/analyzer.dart';
 import 'package:analyzer/dart/ast/token.dart';
 
@@ -24,6 +26,9 @@ final childNestings = new Histogram<int>();
 /// The names of each argument.
 final argumentNames = new Histogram<String>();
 
+/// The paths to each build() method and its maximum nesting level.
+final buildMethods = <String, int>{};
+
 bool simplifyNames = false;
 
 void main(List<String> arguments) {
@@ -40,6 +45,13 @@ void main(List<String> arguments) {
   childNestings.printOrdered("Child[ren] nesting depth");
   argumentNames.printDescending("Argument names");
   nestings.printDescending("Argument nesting");
+
+  var methods = buildMethods.keys.toList();
+  methods.sort((a, b) => buildMethods[b].compareTo(buildMethods[a]));
+  for (var method in methods) {
+    print("${buildMethods[method].toString().padLeft(3)}: $method");
+  }
+  print("${buildMethods.length} build() methods");
 }
 
 class NestingVisitor extends Visitor {
@@ -47,10 +59,22 @@ class NestingVisitor extends Visitor {
 
   final bool _allCode;
   bool _pushed = false;
+  int _deepestNesting = 0;
 
   NestingVisitor(String path, {bool allCode})
       : _allCode = allCode ?? false,
         super(path);
+
+  @override
+  void beforeVisitBuildMethod(Declaration node) {
+    _deepestNesting = 0;
+  }
+
+  @override
+  void afterVisitBuildMethod(Declaration node) {
+    var startLine = lineInfo.getLocation(node.offset).lineNumber;
+    buildMethods["$path:$startLine"] = _deepestNesting;
+  }
 
   @override
   void visitArgumentList(ArgumentList node) {
@@ -136,6 +160,7 @@ class NestingVisitor extends Visitor {
   void _push(String string) {
     _stack.add(string);
     _pushed = true;
+    _deepestNesting = math.max(_deepestNesting, _stack.length);
   }
 
   void _pop() {
