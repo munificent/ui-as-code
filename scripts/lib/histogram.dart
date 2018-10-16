@@ -10,6 +10,8 @@ class Histogram<T> {
 
   int get totalCount => _counts.values.fold(0, (a, b) => a + b);
 
+  Iterable<T> get objects => _counts.keys;
+
   // Note: Assumes T is int.
   int get sum {
     var result = 0;
@@ -65,7 +67,7 @@ class Histogram<T> {
     showAll ??= false;
 
     var total = totalCount;
-    print("\n--- $label ($totalCount total) ---");
+    print("\n--- $label ($total total) ---");
 
     var longest = _counts.keys
         .fold<int>(0, (length, key) => math.max(length, key.toString().length));

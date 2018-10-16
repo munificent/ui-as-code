@@ -1,11 +1,14 @@
 // Copyright (c) 2018, the Dart project authors.  Please see the AUTHORS file
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
+import 'dart:math' as math;
+
 import 'package:analyzer/analyzer.dart';
 import 'package:analyzer/dart/ast/token.dart';
 
 import 'package:ui_as_code_tools/histogram.dart';
 import 'package:ui_as_code_tools/parser.dart';
+import 'package:ui_as_code_tools/visitor.dart';
 
 /// Strings that describe the structure of each nested argument.
 final nestings = new Histogram<String>();
@@ -23,13 +26,17 @@ final childNestings = new Histogram<int>();
 /// The names of each argument.
 final argumentNames = new Histogram<String>();
 
+/// The paths to each build() method and its maximum nesting level.
+final buildMethods = <String, int>{};
+
 bool simplifyNames = false;
 
 void main(List<String> arguments) {
   arguments = arguments.toList();
   simplifyNames = arguments.remove("--simplify");
   var allCode = arguments.remove("--all");
-  parsePath(arguments[0], (path) => new Visitor(path, allCode: allCode));
+  parsePath(arguments[0],
+      createVisitor: (path) => new NestingVisitor(path, allCode: allCode));
 
   nestingDepths.printOrdered("Nesting depth");
   print("average = ${nestingDepths.sum / nestingDepths.totalCount}");
@@ -38,48 +45,35 @@ void main(List<String> arguments) {
   childNestings.printOrdered("Child[ren] nesting depth");
   argumentNames.printDescending("Argument names");
   nestings.printDescending("Argument nesting");
+
+  var methods = buildMethods.keys.toList();
+  methods.sort((a, b) => buildMethods[b].compareTo(buildMethods[a]));
+  for (var method in methods) {
+    print("${buildMethods[method].toString().padLeft(3)}: $method");
+  }
+  print("${buildMethods.length} build() methods");
 }
 
-class Visitor extends RecursiveAstVisitor<void> {
-  final String path;
-  bool showedPath = false;
-
+class NestingVisitor extends Visitor {
   final List<String> _stack = [];
 
+  final bool _allCode;
   bool _pushed = false;
-  int _inBuildMethods = 0;
+  int _deepestNesting = 0;
 
-  Visitor(this.path, {bool allCode}) {
-    if (allCode) _inBuildMethods++;
-  }
+  NestingVisitor(String path, {bool allCode})
+      : _allCode = allCode ?? false,
+        super(path);
 
-  bool _isBuildMethod(TypeAnnotation returnType, SimpleIdentifier name,
-      FormalParameterList parameters) {
-    var parameterString = parameters.toString();
-    return returnType.toString() == "Widget" ||
-        parameterString.startsWith("(BuildContext context") ||
-        name.toString().contains("build");
+  @override
+  void beforeVisitBuildMethod(Declaration node) {
+    _deepestNesting = 0;
   }
 
   @override
-  void visitMethodDeclaration(MethodDeclaration node) {
-    var isBuild = _isBuildMethod(node.returnType, node.name, node.parameters);
-    if (isBuild) _inBuildMethods++;
-
-    super.visitMethodDeclaration(node);
-
-    if (isBuild) _inBuildMethods--;
-  }
-
-  @override
-  void visitFunctionDeclaration(FunctionDeclaration node) {
-    var isBuild = _isBuildMethod(
-        node.returnType, node.name, node.functionExpression.parameters);
-    if (isBuild) _inBuildMethods++;
-
-    super.visitFunctionDeclaration(node);
-
-    if (isBuild) _inBuildMethods--;
+  void afterVisitBuildMethod(Declaration node) {
+    var startLine = lineInfo.getLocation(node.offset).lineNumber;
+    buildMethods["$path:$startLine"] = _deepestNesting;
   }
 
   @override
@@ -107,7 +101,7 @@ class Visitor extends RecursiveAstVisitor<void> {
         var argName =
             argument is NamedExpression ? argument.name.label.name : "";
 
-        if (_inBuildMethods > 0) argumentNames.add(argName);
+        if (_allCode || isInBuildMethod) argumentNames.add(argName);
 
         if (simplifyNames && argName != "child" && argName != "children") {
           argName = "_";
@@ -166,10 +160,11 @@ class Visitor extends RecursiveAstVisitor<void> {
   void _push(String string) {
     _stack.add(string);
     _pushed = true;
+    _deepestNesting = math.max(_deepestNesting, _stack.length);
   }
 
   void _pop() {
-    if (_pushed && _inBuildMethods > 0) {
+    if (_pushed && (_allCode || isInBuildMethod)) {
       nestings.add(_stack.join(" "));
       nestingDepths.add(_stack.length);
       ignoringLists.add(_stack.where((s) => s != "[").length);

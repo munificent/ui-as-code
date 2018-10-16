@@ -5,6 +5,7 @@ import 'package:analyzer/analyzer.dart';
 
 import 'package:ui_as_code_tools/histogram.dart';
 import 'package:ui_as_code_tools/parser.dart';
+import 'package:ui_as_code_tools/visitor.dart';
 
 /// Looks at constructor declarations to see how many of them take one or more
 /// list-typed parameters. This should help us gauge how important it is to
@@ -15,27 +16,29 @@ final listTypePattern = new RegExp(r"\b(Iterable|List)\b");
 final widgetParamCounts = new Histogram<int>();
 
 void main(List<String> arguments) {
-  parsePath(arguments[0], (path) => new Visitor(path));
+  parsePath(arguments[0],
+      createVisitor: (path) => new ConstructorVisitor(path));
 
   print("${listParamCounts.totalCount} classes");
   for (var i = 0; i < 5; i++) {
     var count = listParamCounts.count(i);
-    var percent = (100.0 * count / listParamCounts.totalCount).toStringAsFixed(2);
+    var percent =
+        (100.0 * count / listParamCounts.totalCount).toStringAsFixed(2);
     print("${count} ($percent%) constructors take $i sequence parameters");
   }
 
   for (var i = 0; i < 5; i++) {
     var count = widgetParamCounts.count(i);
-    var percent = (100.0 * count / widgetParamCounts.totalCount).toStringAsFixed(2);
+    var percent =
+        (100.0 * count / widgetParamCounts.totalCount).toStringAsFixed(2);
     print("${count} ($percent%) constructors take $i Widget parameters");
   }
 }
 
-class Visitor extends RecursiveAstVisitor<void> {
-  final String path;
+class ConstructorVisitor extends Visitor {
   bool showedPath = false;
 
-  Visitor(this.path);
+  ConstructorVisitor(String path) : super(path);
 
   void show(
       ClassDeclaration node, ConstructorDeclaration ctor, List<String> params) {

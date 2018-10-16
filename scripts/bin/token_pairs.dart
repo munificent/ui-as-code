@@ -35,7 +35,7 @@ final newlineSemicolonPairs = new Histogram<String>();
 void main(List<String> arguments) {
   var errorListener = new ErrorListener();
 
-  forEachDartFile(arguments[0], (file, relative) {
+  forEachDartFile(arguments[0], callback: (file, relative) {
     print(relative);
 
     var source = file.readAsStringSync();

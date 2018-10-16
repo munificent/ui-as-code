@@ -12,6 +12,8 @@ import 'package:analyzer/src/generated/parser.dart';
 import 'package:analyzer/src/string_source.dart';
 import 'package:path/path.dart' as p;
 
+import 'visitor.dart';
+
 Token tokenizeString(String source) {
   var errorListener = new ErrorListener();
 
@@ -22,8 +24,10 @@ Token tokenizeString(String source) {
   return scanner.tokenize();
 }
 
-void forEachDartFile(
-    String path, Function(File file, String relative) callback) {
+void forEachDartFile(String path,
+    {bool includeTests, Function(File file, String relative) callback}) {
+  includeTests ??= false;
+
   if (new File(path).existsSync()) {
     callback(new File(path), p.relative(path, from: path));
     return;
@@ -32,8 +36,12 @@ void forEachDartFile(
   for (var entry in new Directory(path).listSync(recursive: true)) {
     if (!entry.path.endsWith(".dart")) continue;
 
-    // Don't care about tests.
-//    if (entry.path.contains("/test/")) continue;
+    if (!includeTests) {
+      if (entry.path.contains("/test/")) continue;
+      if (entry.path.contains("/sdk/tests/")) continue;
+      if (entry.path.contains("/testcases/")) continue;
+      if (entry.path.endsWith("_test.dart")) continue;
+    }
 
     // Don't care about cached packages.
     if (entry.path.contains("/.dart_tool/")) continue;
@@ -42,21 +50,15 @@ void forEachDartFile(
   }
 }
 
-void parsePath(String path, AstVisitor<void> Function(String) createVisitor) {
-  forEachDartFile(path, (file, relative) {
-    parseFile(file, relative, (path, _) => createVisitor(path));
+void parsePath(String path,
+    {bool includeTests, Visitor Function(String) createVisitor}) {
+  forEachDartFile(path, includeTests: includeTests, callback: (file, relative) {
+    _parseFile(file, relative, createVisitor);
   });
 }
 
-void parsePathWithLineInfo(
-    String path, AstVisitor<void> Function(String, LineInfo) createVisitor) {
-  forEachDartFile(path, (file, relative) {
-    parseFile(file, relative, createVisitor);
-  });
-}
-
-void parseFile(File file, String shortPath,
-    AstVisitor<void> Function(String, LineInfo) createVisitor) {
+void _parseFile(File file, String shortPath,
+    Visitor Function(String) createVisitor) {
   var source = file.readAsStringSync();
 
   var errorListener = new ErrorListener();
@@ -66,14 +68,16 @@ void parseFile(File file, String shortPath,
   var stringSource = new StringSource(source, file.path);
   var scanner = new Scanner(stringSource, reader, errorListener);
   var startToken = scanner.tokenize();
-  var lineInfo = new LineInfo(scanner.lineStarts);
 
   // Parse it.
   var parser = new Parser(stringSource, errorListener);
   parser.enableOptionalNewAndConst = true;
 
+  var visitor = createVisitor(shortPath);
+  visitor.bind(source, new LineInfo(scanner.lineStarts));
+
   var node = parser.parseCompilationUnit(startToken);
-  node.accept(createVisitor(shortPath, lineInfo));
+  node.accept(visitor);
 }
 
 /// A simple [AnalysisErrorListener] that just collects the reported errors.

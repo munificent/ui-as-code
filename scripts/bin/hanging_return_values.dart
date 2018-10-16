@@ -6,36 +6,33 @@ import 'package:analyzer/source/line_info.dart';
 
 import 'package:ui_as_code_tools/histogram.dart';
 import 'package:ui_as_code_tools/parser.dart';
+import 'package:ui_as_code_tools/visitor.dart';
 
 var files = 0;
 var lines = 0;
 final counts = new Histogram<String>();
 
 void main(List<String> arguments) {
-  forEachDartFile(arguments[0], (file, relative) {
-    // Skip the SDK tests. There are a bunch that have magic comments right
-    // before certain tokens to validate error messages and those end up
-    // pushing the return to the next line. This isn't normal Dart code.
-    if (relative.startsWith("sdk/tests/")) return;
-    files++;
-
-    parseFile(file, relative, (path, lineInfo) {
-      lines += lineInfo.lineCount;
-      return new Visitor(path, lineInfo);
-    });
-  });
+  parsePath(arguments[0],
+      createVisitor: (path) => new HangingReturnVisitor(path));
 
   counts.printDescending("Results", showAll: true);
   print("Files: $files");
   print("Lines: $lines");
 }
 
-class Visitor extends RecursiveAstVisitor<void> {
-  final String path;
-  final LineInfo lineInfo;
+class HangingReturnVisitor extends Visitor {
   bool showedPath = false;
 
-  Visitor(this.path, this.lineInfo);
+  HangingReturnVisitor(String path) : super(path) {
+    files++;
+  }
+
+  @override
+  void visitCompilationUnit(CompilationUnit node) {
+    node.visitChildren(this);
+    lines += lineInfo.lineCount;
+  }
 
   void show(ReturnStatement node) {
     if (!showedPath) {

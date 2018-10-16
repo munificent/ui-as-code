@@ -19,7 +19,7 @@ final multiLineFors = [
 void main(List<String> arguments) {
   var stripped = 0;
 
-  forEachDartFile(arguments[0], (file, relative) {
+  forEachDartFile(arguments[0], includeTests: true, callback: (file, relative) {
     print(relative);
     var outPath = p.join(arguments[1], relative);
     new Directory(p.dirname(outPath)).createSync(recursive: true);

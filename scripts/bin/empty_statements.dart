@@ -2,10 +2,10 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 import 'package:analyzer/analyzer.dart';
-import 'package:analyzer/source/line_info.dart';
 
 import 'package:ui_as_code_tools/histogram.dart';
 import 'package:ui_as_code_tools/parser.dart';
+import 'package:ui_as_code_tools/visitor.dart';
 
 var files = 0;
 var lines = 0;
@@ -15,14 +15,8 @@ final all = new Histogram<String>();
 /// Counts how many times an empty statement as used as the body of various
 /// control flow statements.
 void main(List<String> arguments) {
-  forEachDartFile(arguments[0], (file, relative) {
-    files++;
-
-    parseFile(file, relative, (path, lineInfo) {
-      lines += lineInfo.lineCount;
-      return new Visitor(path, lineInfo);
-    });
-  });
+  parsePath(arguments[0],
+      createVisitor: (path) => new EmptyStatementVisitor(path));
 
   counts.printDescending("By type", showAll: true);
   all.printDescending("All", showAll: true);
@@ -30,11 +24,16 @@ void main(List<String> arguments) {
   print("Lines: $lines");
 }
 
-class Visitor extends RecursiveAstVisitor<void> {
-  final String path;
-  final LineInfo lineInfo;
+class EmptyStatementVisitor extends Visitor {
+  EmptyStatementVisitor(String path) : super(path) {
+    files++;
+  }
 
-  Visitor(this.path, this.lineInfo);
+  @override
+  void visitCompilationUnit(CompilationUnit node) {
+    node.visitChildren(this);
+    lines += lineInfo.lineCount;
+  }
 
   // TODO(rnystrom): Is there anything we need to do for switch?
 
