@@ -2,6 +2,26 @@
 # optional semicolon prototype on a corpus of code. Given a directory "original"
 # containing the corpus, you can run these tasks:
 
+# We mostly want to validate this on idiomatic code. The various language and
+# Dart tool tests often have deliberately bizarre code to test edge cases. Also,
+# the test framework requires special marker comments in specific odd places.
+#
+# Delete all of those since they aren't relevant or representative.
+#
+# There is also some duplication where a package is in multiple locations.
+# Delete most of those.
+remove_stuff:
+	rm -rf original/sdk/tests
+	rm -rf original/sdk/pkg/analyzer/test
+	rm -rf original/sdk/pkg/analyzer_cli/test
+	rm -rf original/sdk/pkg/analysis_server/test
+	rm -rf original/sdk/pkg/dev_compiler/test
+	rm -rf original/sdk/pkg/front_end/testcases
+	rm -rf original/sdk/pkg/kernel/test
+	rm -rf original/sdk/runtime/tests
+	rm -rf original/sdk/third_party/pkg
+	rm -rf original/sdk/third_party/pkg_tested
+
 # "original" -> "stripped"
 #
 # Runs a little script that mechanically removes semicolons from the corpus but

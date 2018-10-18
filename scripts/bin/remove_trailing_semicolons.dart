@@ -18,6 +18,7 @@ final multiLineFors = [
 
 void main(List<String> arguments) {
   var stripped = 0;
+  var remaining = 0;
 
   forEachDartFile(arguments[0], includeTests: true, callback: (file, relative) {
     print(relative);
@@ -58,6 +59,9 @@ void main(List<String> arguments) {
       }
 
       stripped += original.length - line.length;
+      var left = line.length - line.replaceAll(";", "").length;
+      remaining += left;
+      if (left != 0) print(line);
 
       buffer.writeln(line);
     }
@@ -65,5 +69,5 @@ void main(List<String> arguments) {
     new File(outPath).writeAsStringSync(buffer.toString());
   });
 
-  print("Removed $stripped semicolons.");
+  print("Removed $stripped semicolons, $remaining remain.");
 }

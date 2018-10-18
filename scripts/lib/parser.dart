@@ -25,40 +25,71 @@ Token tokenizeString(String source) {
 }
 
 void forEachDartFile(String path,
-    {bool includeTests, Function(File file, String relative) callback}) {
-  includeTests ??= false;
+    {bool includeTests,
+    bool includeLanguageTests,
+    Function(File file, String relative) callback}) {
+  includeTests ??= true;
+  includeLanguageTests ??= false;
 
   if (new File(path).existsSync()) {
     callback(new File(path), p.relative(path, from: path));
     return;
   }
 
+  var lastDir = "";
+
   for (var entry in new Directory(path).listSync(recursive: true)) {
     if (!entry.path.endsWith(".dart")) continue;
 
-    if (!includeTests) {
-      if (entry.path.contains("/test/")) continue;
+    // For unknown reasons, some READMEs have a ".dart" extension. They aren't
+    // Dart files.
+    if (entry.path.endsWith("README.dart")) continue;
+
+    if (!includeLanguageTests) {
       if (entry.path.contains("/sdk/tests/")) continue;
       if (entry.path.contains("/testcases/")) continue;
+      if (entry.path.contains("/sdk/runtime/tests/")) continue;
+      if (entry.path.contains("/linter/test/_data/")) continue;
+      if (entry.path.contains("/analyzer/test/")) continue;
+      if (entry.path.contains("/dev_compiler/test/")) continue;
+      if (entry.path.contains("/analyzer_cli/test/")) continue;
+      if (entry.path.contains("/analysis_server/test/")) continue;
+      if (entry.path.contains("/kernel/test/")) continue;
+    }
+
+    if (!includeTests) {
+      if (entry.path.contains("/test/")) continue;
       if (entry.path.endsWith("_test.dart")) continue;
     }
 
     // Don't care about cached packages.
+    if (entry.path.contains("sdk/third_party/pkg/")) continue;
+    if (entry.path.contains("sdk/third_party/pkg_tested/")) continue;
     if (entry.path.contains("/.dart_tool/")) continue;
 
-    callback(entry, p.relative(entry.path, from: path));
+    var relative = p.relative(entry.path, from: path);
+//    if (p.dirname(relative) != lastDir) {
+//      print(relative);
+//      lastDir = p.dirname(relative);
+//    }
+
+    callback(entry, relative);
   }
 }
 
 void parsePath(String path,
-    {bool includeTests, Visitor Function(String) createVisitor}) {
-  forEachDartFile(path, includeTests: includeTests, callback: (file, relative) {
+    {bool includeTests,
+    bool includeLanguageTests,
+    Visitor Function(String) createVisitor}) {
+  forEachDartFile(path,
+      includeTests: includeTests,
+      includeLanguageTests: includeLanguageTests, callback: (file, relative) {
     _parseFile(file, relative, createVisitor);
   });
 }
 
-void _parseFile(File file, String shortPath,
-    Visitor Function(String) createVisitor) {
+void _parseFile(
+    File file, String shortPath, Visitor Function(String) createVisitor) {
   var source = file.readAsStringSync();
 
   var errorListener = new ErrorListener();

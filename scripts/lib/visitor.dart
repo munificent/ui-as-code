@@ -51,6 +51,8 @@ class Visitor extends RecursiveAstVisitor<void> {
     }
   }
 
+  int getLine(int offset) => lineInfo.getLocation(offset).lineNumber;
+
   void beforeVisitBuildMethod(Declaration node) {}
   void afterVisitBuildMethod(Declaration node) {}
 

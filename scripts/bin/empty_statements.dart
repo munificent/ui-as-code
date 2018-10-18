@@ -38,15 +38,27 @@ class EmptyStatementVisitor extends Visitor {
   // TODO(rnystrom): Is there anything we need to do for switch?
 
   void check(String label, Statement body) {
-    if (body is EmptyStatement) {
+    if (body == null) {
+      // Do nothing. Is absent else clause.
+      assert(label == "is-else");
+    } else if (body is EmptyStatement) {
       counts.add("$label empty");
       all.add("empty");
 
       var line = lineInfo.getLocation(body.offset).lineNumber;
       print("$path:$line : $label");
     } else {
-      counts.add(label);
-      all.add("non-empty");
+      var line = lineInfo.getLocation(body.offset).lineNumber;
+      var prevLine = lineInfo.getLocation(body.beginToken.previous.offset).lineNumber;
+      var type = body is Block ? "block" : "statement";
+      if (prevLine == line) {
+        all.add("non-empty on same line");
+        counts.add("$label $type on same line");
+      } else {
+        all.add("non-empty on different line");
+        counts.add("$label $type on different line");
+        printNode(body.parent);
+      }
     }
   }
 
