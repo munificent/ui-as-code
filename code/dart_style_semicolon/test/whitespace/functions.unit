@@ -22,8 +22,7 @@ int a(var x, [optional = null]) => null;
 <<<
 int a(var x, [optional = null]) => null;
 >>> async
-main()
-    async  {
+main()    async  {
   var x = ()   async=> 1;
   y()async  {}
   var z = () async

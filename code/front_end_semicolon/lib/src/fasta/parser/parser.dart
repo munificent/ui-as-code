@@ -1816,7 +1816,9 @@ class Parser {
       implementsKeyword = token.next;
       token = parseTypeList(implementsKeyword);
     }
-    token = ensureSemicolon(token);
+    // TODO(semicolon)
+//    token = ensureSemicolon(token);
+    token = ensureTerminator(token);
     listener.endNamedMixinApplication(
         begin, classKeyword, equals, implementsKeyword, token);
     return token;
@@ -2399,9 +2401,16 @@ class Parser {
       reportRecoverableError(asyncToken, fasta.messageSetterNotSync);
     }
     bool isExternal = externalToken != null;
-    if (isExternal && !optional(';', token.next)) {
-      reportRecoverableError(
-          externalToken, fasta.messageExternalMethodWithBody);
+    // TODO(semicolon)
+//    if (isExternal && !optional(';', token.next)) {
+    if (isExternal) {
+      var term = optionalTerminator(token.next);
+      if (term == null) {
+        reportRecoverableError(
+            externalToken, fasta.messageExternalMethodWithBody);
+      } else {
+        token = term;
+      }
     }
     token = parseFunctionBody(token, false, isExternal);
     asyncState = savedAsyncModifier;
@@ -3107,8 +3116,13 @@ class Parser {
     }
     Token next = token.next;
     if (externalToken != null) {
-      if (!optional(';', next)) {
+      // TODO(semicolon)
+//      if (!optional(';', next)) {
+      var term = optionalTerminator(next);
+      if (term == null) {
         reportRecoverableError(next, fasta.messageExternalMethodWithBody);
+      } else {
+        next = term;
       }
     }
     if (optional('=', next)) {
@@ -3169,8 +3183,13 @@ class Parser {
       }
       token = parseRedirectingFactoryBody(token);
     } else if (externalToken != null) {
-      if (!optional(';', next)) {
+      // TODO(semicolon)
+//      if (!optional(';', next)) {
+      var term = optionalTerminator(next);
+      if (term == null) {
         reportRecoverableError(next, fasta.messageExternalFactoryWithBody);
+      } else {
+        token = term.previous;
       }
       token = parseFunctionBody(token, false, true);
     } else {
@@ -3336,7 +3355,17 @@ class Parser {
     assert(!isExpression);
     token = skipAsyncModifier(token);
     Token next = token.next;
-    if (optional('native', next)) {
+    // DONE(semicolon): Make sure we only treat "native" as a keyword if there
+    // is a terminator after it (or after a string literal after it). Fixes
+    // cases like:
+    //
+    //     import 'foo.dart' as native;
+    //     class Bar {
+    //       abstractMethod()
+    //       native.Foo another() {}
+    //     }
+    if (optional('native', next) && (isTerminator(next.next) ||
+        next.next.kind == STRING_TOKEN && isTerminator(next.next.next))) {
       Token nativeToken = next;
       // TODO(danrubel): skip the native clause rather than parsing it
       // or remove this code completely when we remove support
@@ -3393,13 +3422,26 @@ class Parser {
   Token parseFunctionBody(Token token, bool ofFunctionExpression,
       bool allowAbstract) {
     Token next = token.next;
-    if (optional('native', next)) {
+    // DONE(semicolon): Make sure we only treat "native" as a keyword if there
+    // is a terminator after it (or after a string literal after it). Fixes
+    // cases like:
+    //
+    //     import 'foo.dart' as native;
+    //     class Bar {
+    //       abstractMethod()
+    //       native.Foo another() {}
+    //     }
+    if (optional('native', next) && (isTerminator(next.next) ||
+        next.next.kind == STRING_TOKEN && isTerminator(next.next.next))) {
       Token nativeToken = next;
       token = parseNativeClause(token);
       next = token.next;
-      if (optional(';', next)) {
-        listener.handleNativeFunctionBody(nativeToken, next);
-        return next;
+      // TODO(semicolon)
+//      if (optional(';', next)) {
+      var term = optionalTerminator(next);
+      if (term != null) {
+        listener.handleNativeFunctionBody(nativeToken, term);
+        return term;
       }
       reportRecoverableError(next, fasta.messageExternalMethodWithBody);
       listener.handleNativeFunctionBodyIgnored(nativeToken, next);
@@ -3529,11 +3571,24 @@ class Parser {
   }
 
   Token parseAsyncModifierOpt(Token token) {
+    // DONE(semicolon): The isTerminator() checks prevent "async" and "sync"
+    // being treated as keywords on the next line for cases like:
+    //
+    //     import 'blah.dart' as async
+    //     class Foo {
+    //       Foo()
+    //       async.Blah bar() {}
+    //     }
+    //
+    // A correct implementation would look past the modifier to see if they
+    // can be correctly parsed as a keyword and decide based on that. Doing the
+    // hacky thing here to avoid the lookahead.
+
     Token async;
     Token star;
     asyncState = AsyncModifier.Sync;
     Token next = token.next;
-    if (optional('async', next)) {
+    if (!isTerminator(next) && optional('async', next)) {
       async = token = next;
       next = token.next;
       if (optional('*', next)) {
@@ -3543,7 +3598,7 @@ class Parser {
       } else {
         asyncState = AsyncModifier.Async;
       }
-    } else if (optional('sync', next)) {
+    } else if (!isTerminator(next) && optional('sync', next)) {
       async = token = next;
       next = token.next;
       if (optional('*', next)) {
@@ -4020,16 +4075,21 @@ class Parser {
     Token next = token.next;
     Token beginToken = next;
 
-    _pushContext(NewlineContext.expression);
-
     while (true) {
+      // TODO: semi
       if (optional('[', next)) {
         assert(typeArg == noTypeParamOrArg);
         Token openSquareBracket = next;
         bool old = mayParseFunctionExpressions;
         mayParseFunctionExpressions = true;
+
+        _pushContext(NewlineContext.expression);
+
         token = parseExpression(next);
         next = token.next;
+
+        _popContext();
+
         mayParseFunctionExpressions = old;
         if (!optional(']', next)) {
           // Recovery
@@ -4054,10 +4114,14 @@ class Parser {
           assert(optional('(', token.next));
         }
         next = token.next;
-      } else if (optional('(', next)) {
+      } else
+      if (optional('(', next) && !isTerminator(next)) { // TODO(semicolon)
         if (typeArg == noTypeParamOrArg) {
           listener.handleNoTypeArguments(next);
         }
+
+        _pushContext(NewlineContext.expression);
+
         token = parseArguments(token);
         typeArg = computeMethodTypeArguments(token);
         if (typeArg != noTypeParamOrArg) {
@@ -4067,12 +4131,12 @@ class Parser {
         }
         next = token.next;
         listener.handleSend(beginToken, next);
+
+        _popContext();
       } else {
         break;
       }
     }
-
-    _popContext();
 
     return token;
   }
@@ -4235,7 +4299,8 @@ class Parser {
     assert(optional('this', thisToken));
     listener.handleThisExpression(thisToken, context);
     Token next = token.next;
-    if (optional('(', next)) {
+    // TODO(semicolon)
+    if (optional('(', next) && !isTerminator(next)) {
       // Constructor forwarding.
       listener.handleNoTypeArguments(next);
       token = parseArguments(token);
@@ -4249,7 +4314,8 @@ class Parser {
     assert(optional('super', token));
     listener.handleSuperExpression(superToken, context);
     Token next = token.next;
-    if (optional('(', next)) {
+    // TODO(semicolon)
+    if (optional('(', next) && !isTerminator(next)) {
       // Super constructor.
       listener.handleNoTypeArguments(next);
       token = parseArguments(token);
@@ -4473,7 +4539,18 @@ class Parser {
     TypeInfo typeInfo = computeType(token, false);
     Token beforeName = typeInfo.skipType(token);
     Token name = beforeName.next;
-    if (name.isIdentifier) {
+    // TODO(semicolon): For some reason, when parsing "bar.baz" in:
+    //
+    //     class A {
+    //       foo() => bar.baz
+    //       another() {}
+    //     }
+    //
+    // It gets here and tries to parse bar.baz as the return type of a local
+    // function another, even though local function declarations are statements,
+    // not expressions.
+    // !isTerminator() is to prevent that.
+    if (name.isIdentifier && !isTerminator(name)) {
       TypeParamOrArgInfo typeParam = computeTypeParamOrArg(name);
       Token next = name;
       if (typeParam != noTypeParamOrArg) {
@@ -4511,7 +4588,8 @@ class Parser {
     assert(optional('new', newKeyword));
     listener.beginNewExpression(newKeyword);
     token = parseConstructorReference(newKeyword);
-    token = parseRequiredArguments(token);
+    token =
+        parseRequiredArguments(token); // TODO(semicolon): handle newline here
     listener.endNewExpression(newKeyword);
     return token;
   }
@@ -4747,7 +4825,8 @@ class Parser {
 
   Token parseArgumentsOpt(Token token) {
     Token next = token.next;
-    if (!optional('(', next)) {
+    // TODO(semicolon)
+    if (!optional('(', next) || isTerminator(next)) {
       listener.handleNoArguments(next);
       return token;
     } else {

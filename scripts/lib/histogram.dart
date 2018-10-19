@@ -72,18 +72,20 @@ class Histogram<T> {
     var longest = _counts.keys
         .fold<int>(0, (length, key) => math.max(length, key.toString().length));
 
+    var shown = 0;
     var skipped = 0;
     for (var object in keys) {
       var countString = count(object).toString().padLeft(7);
       var percent = 100 * count(object) / total;
       var percentString = percent.toStringAsFixed(3).padLeft(7);
-      if (percent >= 0.1 || showAll) {
+      if (shown < 100 || percent >= 0.1 || showAll) {
         var line = "${countString} ($percentString%): $object";
         if (longest < 40) {
           line = line.padRight(longest + 22);
           line += "*" * percent.ceil();
         }
         print(line);
+        shown++;
       } else {
         skipped++;
       }

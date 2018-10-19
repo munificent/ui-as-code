@@ -95,3 +95,47 @@ a is b;
   "adjacent"
       "string";
 }
+>>>
+{
+  foo
+  (bar)
+}
+<<<
+{
+  foo;
+  (bar);
+}
+>>>
+{
+  this
+  (bar)
+}
+<<<
+{
+  this;
+  (bar);
+}
+>>>
+{
+  foo
+  [bar]
+}
+<<<
+{
+  foo;
+  [bar];
+}
+>>>
+{
+  buffer
+    ..writeln('typedef struct {')
+    ..indent()
+  (type as Struct).fields.forEach((f) => f.generate(buffer))
+}
+<<<
+{
+  buffer
+    ..writeln('typedef struct {')
+    ..indent();
+  (type as Struct).fields.forEach((f) => f.generate(buffer));
+}

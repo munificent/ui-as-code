@@ -154,3 +154,87 @@ class Foo {
 
   int field;
 }
+>>>
+class _WidgetInspectorService = Object with WidgetInspectorService
+<<<
+class _WidgetInspectorService = Object
+    with WidgetInspectorService;
+>>>
+class A {
+  foo() => bar.baz
+  another() {}
+}
+<<<
+class A {
+  foo() => bar.baz;
+  another() {}
+}
+>>>
+abstract class QuillOptionsStatic {
+  external String foo()
+  external bar()
+}
+<<<
+abstract class QuillOptionsStatic {
+  external String foo();
+  external bar();
+}
+>>>
+external String foo()
+external bar()
+<<<
+external String foo();
+external bar();
+>>>
+class ByteData {
+  double _getFloat32(int byteOffset, [bool littleEndian]) native
+
+  double getFloat64(int byteOffset, [Endian endian = Endian.big]) =>
+      _getFloat64(byteOffset, Endian.little == endian)
+}
+<<<
+class ByteData {
+  double _getFloat32(int byteOffset,
+      [bool littleEndian]) native;
+
+  double getFloat64(int byteOffset,
+          [Endian endian =
+              Endian.big]) =>
+      _getFloat64(byteOffset,
+          Endian.little == endian);
+}
+>>>
+abstract class AuthJsImpl {
+  external factory AuthJsImpl()
+  external static String get PROVIDER_ID
+}
+<<<
+abstract class AuthJsImpl {
+  external factory AuthJsImpl();
+  external static String
+      get PROVIDER_ID;
+}
+>>>
+class AccountsResourceApi {
+  AccountsResourceApi()
+  async.Future foo() {}
+}
+<<<
+class AccountsResourceApi {
+  AccountsResourceApi();
+  async.Future foo() {}
+}
+>>>
+abstract class JsToElementMap {
+  Name getName(ir.Name name)
+
+  native.NativeBehavior getNativeBehaviorForJsCall(ir.StaticInvocation node)
+}
+<<<
+abstract class JsToElementMap {
+  Name getName(ir.Name name);
+
+  native.NativeBehavior
+      getNativeBehaviorForJsCall(
+          ir.StaticInvocation node);
+}

@@ -13,6 +13,9 @@ import '../scanner.dart' show Token;
 import '../../scanner/token.dart'
     show BeginToken, SimpleToken, SyntheticToken, TokenType;
 
+// TODO(semicolon): For AbstractScanner.lastScanner.
+import '../scanner/abstract_scanner.dart';
+
 /// Returns true if [token] is the symbol or keyword [value].
 bool optional(String value, Token token) {
   return identical(value, token.stringValue);
@@ -84,6 +87,11 @@ bool isOneOf(Token token, Iterable<String> values) {
 /// Return true if the given token matches one of the given values or is EOF.
 bool isOneOfOrEof(Token token, Iterable<String> values) {
   for (String tokenValue in values) {
+    // TODO(semicolon). Treat a newline as a semicolon.
+    if (tokenValue == ';' && AbstractScanner.lastScanner.isTerminator(token)) {
+      return true;
+    }
+
     if (optional(tokenValue, token)) {
       return true;
     }
