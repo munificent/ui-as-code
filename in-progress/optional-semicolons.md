@@ -7,34 +7,30 @@ syntax, while avoiding the insanity of JavaScript's semicolon insertion rules.
 
 For such a tiny feature&mdash;literally just eliminating some `;` at the ends of
 some lines&mdash;people have *really* strong feelings about using newlines as
-statement separators. If you already think optional semicolons is a good idea,
-feel free to skip this section. Otherwise, I'll do my best here to convince you.
-You may dislike significant newlines for a number of reasons, so I'll take a
-number of approaches to try to persuade you.
+statement separators. Because of that, 2/3 of this proposal is about persuading
+you that we *should* and *can* do it. If you already think optional semicolons
+is a good idea, feel free to skip the next two sections and go straight to the
+proposal. Otherwise, I'll do my best to convince you first.
 
 ### User desire
 
-First, the simplest one is that many reasonable users do already want this. It
-was one of the [very first feature requests for Dart][sdk#34], and has 20 👍 and
-3 ❤️. (That's not a lot, but keep in mind this bug was closed years ago.) The
-[more recent issue][sdk#30347] has 40 👍, 18 🎉, and 11 ❤️, compared to 7 😕 and 2 👎.
+The simplest motivation is that many users already want it. It was one of the
+[very first feature requests for Dart][sdk#34], and has 20 👍 and 3 ❤️. (That's
+not a lot, but keep in mind this bug was closed years ago.) The [more recent
+issue][sdk#30347] has 40 👍, 18 🎉, and 11 ❤️, compared to 7 😕 and 2 👎.
 
 [sdk#34]: https://github.com/dart-lang/sdk/issues/34
 [sdk#30347]: https://github.com/dart-lang/sdk/issues/30347
 
-BASIC, F#, Go, Groovy, Haskell, JavaScript, Julia, Kotlin, Lua, Python, R, Ruby,
-Scala, Swift, and the various shell languages all treat newlines as separators.
-Dart's main competitors are TypeScript, Swift, and Kotlin, which are all in this
-list.
+BASIC, F#, Go, Groovy, Haskell, JavaScript, Julia, Lua, Python, R, Ruby, Scala,
+and the various shell languages all omit semicolons. Dart's main competitors are
+TypeScript, Swift, and Kotlin. They all do too.
 
 The odds that all of the Dart users who starred those bugs, the designers of
 those other languages, and their users are all delusional is pretty slim. This
 may not be enough to convince you that significant newlines are *better*, since
 there are also plenty of successful languages that *don't* have them, but it
 should send a clear signal that they are a reasonable idea.
-
-(You might be thinking that JavaScript in that list *does* make you think
-optional semicolons are a terrible idea. We'll get to JS later.)
 
 ### User errors
 
@@ -47,9 +43,9 @@ that. Eliminating them can make that process easier.
 
 **TODO: Are there any studies on this we can reference?**
 
-Even experienced manual semicolon inserters still make mistakes. Even after
-years of programming in Dart, I often forget the mandatory semicolon when
-assigning a lambda to a variable:
+Even experienced manual semicolon inserters still make mistakes. After years of
+programming in Dart, I still forget the mandatory semicolon when assigning a
+lambda to a variable:
 
 ```dart
 someCallback = () {
@@ -105,9 +101,10 @@ The commas are optional, but each of those five semicolons is required. Omit
 one, and it's an error. Place one on any of the other lines where they aren't
 required, and it's an error.
 
-The fact that it's an error to omit them in some places and an error to have
-them in the opposite places shows how needless they are. The language *already
-knows* what you mean, which is why it's able to report those errors.
+The fact that it's an *error* to omit them shows how needless they are in many
+places. The language *already knows* the statement has ended, which is why it's
+able to tell you you forget the semicolon at exactly that point. The semicolons
+tell it nothing it doesn't already know.
 
 ### Language commitment
 
@@ -115,7 +112,7 @@ Fair warning, this gets kind of squishy.
 
 Choosing a language is a big commitment. When a user chooses to write a large
 program in Dart, they are stuck with it for a long period of time. To make that
-kind of commitment, they want to assurance not just that Dart is good today but
+kind of commitment, they want assurance not just that Dart is good today but
 that its stewards are taking it in the direction they want. They are looking for
 signals about what kind of principles or philosophy the shepherds of the
 language have so they can predict if the language will continue to be a good fit
@@ -123,7 +120,7 @@ for them.
 
 A good example of this is [tail call optimization][tco]. Every time a new
 language appears on the scene, people show up asking if it does "proper tail
-calls". In Dart, it was [issue #29][sdk#29]. TCO is a neat feature that can
+calls". (In Dart, it was [issue #29][sdk#29].) TCO is a neat feature that can
 enable some nice implementation patterns. But, if your language has loops (which
 they almost all do), it doesn't let you do anything you can't already do. It's a
 minor control flow feature, like a switch statement.
@@ -136,8 +133,8 @@ future versions of the language add new features that encourage functional
 styles (JS, probably yes) or not (Python, probably no)?
 
 This does actually matter, because if future versions of a language invest in
-features you don't want, you have to deal with the migration cost and there is
-the opportunity cost of features you *could* have had.
+features you don't want, you have to deal with the migration and the opportunity
+cost of features you *could* have had.
 
 [tco]: https://en.wikipedia.org/wiki/Tail_call
 [sdk#29]: https://github.com/dart-lang/sdk/issues/29
@@ -151,7 +148,7 @@ wrong, it's not discovered until the last possible minute when an operation
 can't be performed.
 
 On the other end are very explicitly-typed languages like Java, Ada, and C++.
-Those require you to explicitly prove to the compiler that you know what your
+Those require you to laboriously prove to the compiler that you know what your
 code is doing. In this:
 
 ```c
@@ -177,7 +174,7 @@ Ladd][seth]:
 [seth]: https://github.com/dart-lang/sdk/issues/30347#issuecomment-321058277
 
 > Modern languages are generally believed to be less boilerplate, more terse,
-> and including language features working for you. For example, type inferencing
+> and include language features working for you. For example, type inferencing
 > is the language working for you. We could force you to write type annotations
 > everywhere, or we can say "in many cases, we can infer it for you".
 > Auto-inserting punctuation is another way the language can work for you. Also,
@@ -210,7 +207,7 @@ If this proposal ships, the [official style guide][] will tell you to omit
 semicolons. [Dartfmt][], the canonical automatted formatter for Dart code will
 remove them.
 
-[effective style guide]: https://www.dartlang.org/guides/language/effective-dart
+[official style guide]: https://www.dartlang.org/guides/language/effective-dart
 [dartfmt]: https://github.com/dart-lang/dart_style
 
 We still allow semicolons for three reasons:
@@ -265,31 +262,29 @@ Given some set of rules for eliminating semicolons, how can we tell if they are
     with the new newline-sensitive grammar as it did with the old grammar? Any
     difference here is existing code that is broken by the new rules.
 
-*   **Accuracy** - Get users to write a bunch of Dart code without semicolons
-    and with newlines wherever they feel they look best. Then parse it with
-    optional semicolons. How often does the parser correctly see the code they
-    way the user wants it to? Any difference here force users to fight with the
-    parser and obey its style dictates over their own preference.
+*   **Accuracy** - When users write code without semicolons and with newlines
+    wherever they feel they look best, how often does the parser see the code
+    they way the user wants it to? How often do users have to fight the grammar
+    and tweak newlines to satisfy the parser?
 
 *   **Robustness** - Given a chunk of code where the newlines are *not*
     deliberate, how likely is it to be parsed the way the user wants? If someone
     is just banging code into their editor and not thinking about
     formatting&mdash;that's dartfmt's job after all&mdash;how likely are they to
-    get what they want out?
+    get what they want out? If they copy and paste a big chunk of code somewhere else, how often does it end up still correct?
 
-In an ideal world, we'd hit 100% on all three of those. Short of radically
-changing the language into something like Lisp, that's impossible, but we can
-come pretty close.
+In an ideal world, we'd hit 100% on all four of those. Short of radically
+changing the language into something like Lisp, that's impossible. But we can
+run experiments on a corpus of Dart code to try to empirically measure these to
+some degree.
 
-More importantly, we can run experiments on a corpus of Dart code to try to
-empirically measure these to some degree. The corpus I used is the Flutter
-repository, the Dart SDK repository, and the 1,000 most-recently published
-packages to pub.dartlang.org. It contains **4,963,739 lines of Dart code**
-across **19,856 files**. I ignore results from a few language/compiler test
-files that deliberately test syntax errors or contain comments in odd locations
-required by the test framework.
+The corpus I used is the Flutter repository, the Dart SDK repository, and the
+1,000 most-recently published packages to pub.dartlang.org. It contains
+**4,963,739 lines of Dart code** across **19,856 files**. I ignore results from
+a few language/compiler test files that deliberately test syntax errors or
+contain comments in odd locations required by the test framework.
 
-There are more than 1,677,054 semicolons that would be removed by this proposal.
+There are **1,677,054** semicolons that would be removed by this proposal.
 
 In order to test the proposal, I hacked together a prototype implementation of
 its parsing rules in [a fork of the front_end][front_end] package's Fasta
@@ -301,7 +296,7 @@ that I'll call out below.
 
 ### Ambiguity
 
-In most places in the grammar we know a newline is *not* significant because a
+In most places in the grammar, we know a newline is *not* significant because a
 semicolon can't appear there. For example, we can always safely the ignore
 newline after `class`:
 
@@ -346,12 +341,10 @@ play, and where a semicolon is often necessary to separate two expression
 statements.
 
 The rules for resolving ambiguities need to be simple enough for users to
-internalize, while also being what the user wants. JavaScript famously got this
-wrong and often fails to insert semicolons where users want it to.
-
-It turns out there is a simple rule that does what users want most of the time.
-I call it the "eagerness principle". It says, **if there is a valid way to treat
-a newline as significant, it *should* be significant.**
+internalize, while also being what the user wants. It turns out there is a
+simple rule that does what users want most of the time. I call it the "eagerness
+principle". It says, **if there is a valid way to treat a newline as
+significant, it *should* be significant.**
 
 The intuition is that if the user chose to put a newline there, the language
 should respect that choice and consider it a signal of intent unless it clearly
@@ -365,11 +358,9 @@ main() {
 }
 ```
 
-Note that this is the exact opposite of JavaScript. JS says that newlines do
+(Note that this is the exact opposite of JavaScript. JS says that newlines do
 *not* signal user intent at all... unless that leads to ambiguity in which case
-it circles back and reluctantly takes them into account. JS ignores you unless
-it can't. With this proposal, Dart listens to you unless it's certain you aren't
-saying something.
+it circles back and reluctantly takes them into account.)
 
 #### Hanging returns
 
@@ -514,10 +505,17 @@ or:
 a - b;
 ```
 
+
+
 In all cases, we follow the eagerness principle and treat a newline as
-significant before these operators. That in turn means one of these operators at
-the beginning of a line is treated like a unary operator if possible. The set of
-operators affected are:
+significant before these operators. That means one of these operators at the
+beginning of a line is treated like a unary operator if possible.
+
+Note that these are *only* a problem at the "top level" of a statement
+expression. Once the operator is nested inside parenthese or an argument list or
+something, a semicolon is never allowed and we know we can ignore the newline.
+
+The set of operators affected are:
 
 *   `-`, which can be used for both unary negation and infix subtraction:
 
@@ -660,13 +658,12 @@ Code like this is rare either way. In the corpus:
 Since this is so rare, it doesn't matter much which way we pick. The eagerness
 principle prefers treating it as two statement expressions, so we stick with
 that. The user can always get a local variable declaration by *removing* the
-newline. If we picked that, they would have to add an explicit semicolon if they
-did want two identifier statement expressions.
+newline. If we picked the other option, they would have to add an explicit
+semicolon if they *did* want two identifier statement expressions.
 
 Note that this is only an ambiguity for *local* variables. For fields and
-top-level variables, there are statement expressions, so no ambiguity. That's
-good because newlines between types and variables are somewhat more common
-there:
+top-level variables, there are no statement expressions, so no ambiguity. That's
+good because newlines between types and variables are more common there:
 
 *   There are **152,370** field declarations.
 *   **194** (0.127%) have a newline before the variable name.
@@ -778,7 +775,8 @@ This is only an issue for *local* functions since bare block statements aren't
 allowed at the declaration level.
 
 There are **12,785** local functions with block bodies in the corpus and none of
-them put the `{` on the next line. We thus go with eagerness and prefer the
+them put the `{` on the next line. (K&R style is completely victorious over
+Allman style in Dart, apparently.) We thus go with eagerness and prefer the
 first interpretation.
 
 #### Variable followed by getter
@@ -829,10 +827,10 @@ existing Dart code the same way it's parsed today.
 We can measure that like so:
 
 1.  Using the current Dart grammar, parse it and then output the resulting
-    syntax tree to some canonical form. Basically, we just want a well-defined
+    syntax tree to some canonical form. We just want a well-defined
     serialization of how the parser views the code. Dartfmt turns out to be a
-    handy tool for this. (The fact that it formats the AST is incidental for
-    our purposes and doesn't affect the experiment.)
+    handy tool for this. (The fact that it formats the AST is incidental for our
+    purposes and doesn't affect the experiment.)
 
 1.  Using the new optional semicolon rules, parse the *same* corpus and output
     it.
@@ -845,6 +843,11 @@ compatibility. Note that even zero differences doesn't ensure perfect
 compatibility since we're limited by the actual code patterns captured by the
 corpus.
 
+The numbers in this section and the next are a little different from the counts
+in the ambiguities section. That's because I used custom scripts to count
+individual occurrences of specific code constructs in the previous section.
+The results here and below count *files* that contain differences.
+
 The results are:
 
 *    **77** (0.388%) files in the corpus have differences. Most only have a
@@ -852,9 +855,9 @@ The results are:
      below).
 
 *    **48** (0.242%) are differences from hanging returns which get a semicolon
-     after the `;` in the new parser. **34** (0.171%) are in a single package,
-     keyclic_sdk_api which has some strange, inconsistent formatting. **14**
-     (0.071%) are in other code.
+     after the `;` in the new parser. **34** (0.171%) are in a single package
+     which has some strange, inconsistent formatting. **14** (0.071%) are in
+     other code.
 
 *    **25** (0.126%) are false positives because the prototype doesn't fully
      implement ignoring the newline after a type in a top-level variable or
@@ -866,7 +869,7 @@ The results are:
      in the generated googleapis package.
 
 *    There are **16** (0.081%) significant differences, ignoring false positives
-     and the keyclic_sdk_api and googleapis packages.
+     and googleapis and one other odd packages.
 
 In other words, about **one in every 1,241 files** (0.081%) would be impacted by
 this change.
@@ -906,14 +909,12 @@ existing code with semicolons is parsed. Differences here are places where we
 need to either change the grammar rules or where users need to tweak their
 style.
 
-*   **372** (1.873%) files have differences. (Note that the numbers here and
-    below are a little different from the counts in the ambiguities section.
-    That's because I used custom scripts to look for specific code constructs in
-    the above where this is based directly on parsing and diffing the results.)
+*   **372** (1.873%) files have differences.
 
 *   **254** (68.280%) of those are spurious diffs caused by whitespace changes
     or syntax errors in the original code. This is mostly things like a
-    semicolon getting moved before or after a comment.
+    semicolon getting moved before or after a comment. The actual behavior of
+    the code is unchanged.
 
 *   **53** (14.247%) are false positives because my prototype parser isn't fully
     complete or robust. **25** of the false positives are because the prototype
@@ -921,9 +922,9 @@ style.
     declarations. **15** of the false positives are because the prototype parser
     doesn't correctly handle treating `factory`, `async`, `get`, and `set` as
     identifiers in some contexts because it's looking for a `;` to make the
-    distinction. **6** are because spurious diffs from a semicolon getting
-    inserted before or after a comment. The remaining few are things like test
-    files that have deliberate syntax errors which get parsed differently, etc.
+    distinction. **6** are spurious diffs from a semicolon getting inserted
+    before or after a comment. The remaining few are things like test files that
+    have deliberate syntax errors which get parsed differently, etc.
 
     In all of these cases, the underlying grammar isn't ambiguous. I just didn't
     implement full correct support because it was too much effort for the
@@ -933,20 +934,20 @@ style.
     semicolons gets parsed differently when the semicolons are removed and
     newlines are significant.
 
-*   **48** (0.242%) are newlines after return statements that have values.
-    34 (70.833%) of those are in a single package, keyclic_sdk_api. The
+*   **48** (0.242%) of those failures are newlines after return statements that
+    have values. 34 (70.833%) of those are in that one odd package. The
     remaining are scattered across Flutter (4) and a handful of packages.
 
-*   **12** (0.060%) empty statements in control flow statements. Half of those
-    are in observatory. (You get an interesting window in programmers'
+*   **12** (0.060%) are empty statements in control flow statements. Half of
+    those are in observatory. (You get an interesting window into programmers'
     idiosyncratic coding styles by doing these investigations.)
 
 *   **5** (0.025%) are newlines after a local variable's type, which causes it
     to be split into two statement expressions.
 
 In other words, about **one in every 305 files** (0.282%) would need a small
-manual tweak after removing the semicolons to get it back to what the user
-intends.
+tweak after removing the semicolons to get it back to what the user intends.
+Usually dartfmt is sufficient to fix them.
 
 ### Robustness
 
@@ -962,7 +963,7 @@ needed to avoid ambiguity.
 ## Proposal
 
 You finally made it to the actual proposal. The pot of gold at the end of the
-very long rainbox of motivation and justification.
+very long rainbow of motivation and justification.
 
 This proposal is a syntax-only change. Once a program has been correctly parsed,
 it is semantically identical to an existing Dart program with semicolons
@@ -1030,7 +1031,7 @@ The rules are:
 *   The `{` and `}` in `block` establish a statement context.
 
 *   The `{` and `}` in `mapLiteral` establish an expression context. (The
-    difference between this and the previous rule is the primary reason why the
+    difference between this and the previous rule is the one reason why the
     rules can't be defined lexically.)
 
 *   The `(` and `)` in `arguments`, `assertStatement`
@@ -1076,9 +1077,8 @@ is you have to take extra care to *not* insert them in the many places where a
 semicolon can never appear and where a newline should be ignored.
 
 This proposal takes a slightly different approach. Instead, we say that any
-token may or may not be "terminating token". A terminating token is the token
-*after* a newline in a context where that newline could be significant. For
-example:
+token may or may not be "terminating". A terminating token is the token *after*
+a newline in a context where that newline could be significant. For example:
 
 ```dart
 main() {
@@ -1108,26 +1108,14 @@ precisely:
 
 To use terminating tokens we introduce a couple of special grammar terminals:
 
-*   The `TERM` rule matches and consumes an explicit semicolon when found as
-    usual. It also matches the end of a source file. If not currently in an
-    expression context, it matches but does not consume a terminating token.
-    Think of it like a zero-width lookahead in a regular expression.
+*   The `TERM` rule matches and consumes an explicit semicolon. It also matches
+    the end of a source file. If not currently in an expression context, it
+    matches but does not consume a terminating token. Think of it like a
+    zero-width lookahead in a regular expression.
 
-    The rule does not match inside an expression context in order to ignore
-    newlines in contexts where that's unambiguous, like:
-
-    ```dart
-    function(left
-      - right)
-    ```
-
-    Code like this is not very common since the canonical style avoids operators
-    at the beginning of most lines, but it makes the language more robust when
-    reading in unformatted or strangely-formatted code.
-
-*   The `NO_TERM` rule does *not* match if the current token is terminating.
-    This is used to prohibit a newline from being ignored in places that would
-    break the eagerness principle, like:
+*   The `NO_TERM` rule does *not* match if the current token is terminating and
+    is not in expression context. This is used to prohibit a newline from being
+    ignored in places that would break the eagerness principle, like:
 
     ```dart
     foo() {
@@ -1193,7 +1181,7 @@ Next, we weave these new rules into the grammar:
 
     ```
     expressionStatement:
-      expression ';'
+      expression TERM
     ```
 
     Change `statement` to:
@@ -1219,10 +1207,10 @@ Next, we weave these new rules into the grammar:
 
     ```
     relationalOperator
-      :    '>' '='
-      |    '>'
-      |    '<='
-      |    NO_TERM '<'
+      : '>' '='
+      | '>'
+      | '<='
+      | NO_TERM '<'
       ;
 
     additiveOperator
@@ -1243,7 +1231,7 @@ Next, we weave these new rules into the grammar:
     These ensure that a line starting with an operator that can be used in
     prefix or infix position is always treated like the former.
 
-    Note that placing `NO_TERM` in `arguments` means the newline significant
+    Note that placing `NO_TERM` in `arguments` means the newline is significant
     in:
 
     ```dart
@@ -1334,13 +1322,14 @@ changes, even though they rarely occur in real code.
 
 To ease that, I propose that we roll this out in a couple of phases:
 
-1.  Tell users optional semicolons are coming, loudly and clearly.
+1.  Tell users optional semicolons are coming, loudly and clearly. This should
+    be a delightful message for most users.
 
 1.  In a minor release of the SDK, add static warnings to the
     previously-described ambiguous places where a newline would cause the code
     to be parsed differently with optional semicolons.
 
-1.  Fix any of these warnings that happen to exist inside Google, or in our own
+1.  Fix any of these warnings that happen to exist inside Google, and in our own
     tools and packages.
 
 1.  In the next minor release of the SDK, enable the optional semicolon rules
@@ -1358,7 +1347,7 @@ removes semicolons. This is the perfect place to implement this because the
 formatter can also ensure that the resulting code has the correct newlines to
 preserve the original code's meaning.
 
-### dartfmt
+### Fix dartfmt
 
 The formatter's newline handling already mostly follows the rules this proposal
 needs to correctly infer semicolons in the right places. (One might wonder if
@@ -1389,20 +1378,20 @@ Before we move ahead with this proposal, I'd like more confidence in two things:
 
 I have two things:
 
-*   A prototype implementation that I validate parses existing code correctly
+*   A prototype implementation that I validated parses existing code correctly
     and code without semicolons correctly. So I know I have an implementation
     that works, at least on the kind of code in the corpus.
 
 *   A description of a concrete set of grammar changes in this proposal. I made
     these based on my changes to the front end package in the prototype.
 
-But I'm not entirely confident the latter correctly reflects the former. I'm
+But I'm not entirely confident the former correctly implements the latter. I'm
 not familiar with Fasta, so it may be that my prototype isn't a faithful
 implementation of this proposal. One first step is to get help from others to
 make sure my prototype does what this proposal says.
 
 I'm not worried that it's *impossible* to specify good optional semicolon rules
-because the prototype *does* work. I'm just worried that my description of how
+because the prototype *does* work. I'm just worried that my description of *how*
 it works in this proposal isn't correct.
 
 ### Ensure there aren't other undiscovered ambiguities
@@ -1475,11 +1464,11 @@ them&mdash;does so using a different mechanism. Some of this is because the
 language's grammar has different needs and some is just a matter of taste and
 history.
 
-JavaScript's rules were well-intentioned (few of have designed and implemented
-an entirely new language in less than two weeks!) but turned out to be the wrong
-ones. The gist is that JavaScript tries to *ignore* all newlines and *only if an
-error occurs* does it go back and turn some of them into semicolons. All of the
-famous pitfalls of ASI in JavaScript flow from that.
+JavaScript's rules were well-intentioned (few of us have designed and
+implemented an entirely new language in less than two weeks!) but turned out to
+be the wrong ones. The gist is that JavaScript tries to *ignore* all newlines
+and *only if an error occurs* does it go back and turn some of them into
+semicolons. All of the famous pitfalls of ASI in JavaScript flow from that.
 
 This proposal, like other languages where semicolons are rarely seen in the
 wild, presumes the opposite: a newline that can be a semicolon should be a
@@ -1540,10 +1529,10 @@ punctuation to mean different things in different contexts. Consider:
 ```
 
 Should we insert a semicolon after the `)`? If that code is a block containing a
-labelled statement, yes. If it's a map literal, no.
+labelled statement, yes. If it's a map literal, no. The lexical grammar doesn't
+know if you're using curly braces for a block or a map.
 
-The lexical grammar doesn't know if you're using curly braces for a block or a
-map. Contextual keywords, which Dart uses heavily, pose another problem:
+Contextual keywords, which Dart uses heavily, pose another problem:
 
 ```dart
 import 'foo.dart' show
@@ -1562,10 +1551,11 @@ grammar&mdash;where we have that needed context.
 
 ## Methods and Data
 
-All of the numbers in this proposal are based on a set of custom scripts and
-a fork of the front_end package. Those are all here at
+All of the numbers in this proposal are based on a set of custom scripts and a
+fork of the front_end package. Those are all here at
 [github.com/munificent/ui-as-code][repo]. They aren't the most beautiful code,
-but you should be able to run them locally yourself without too much difficult.
+but you should be able to run them locally yourself without too much difficulty.
+I'll help you if you want.
 
 [repo]: https://github.com/munificent/ui-as-code/tree/master/scripts
 
