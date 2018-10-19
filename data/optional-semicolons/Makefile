@@ -21,6 +21,7 @@ remove_stuff:
 	rm -rf original/sdk/runtime/tests
 	rm -rf original/sdk/third_party/pkg
 	rm -rf original/sdk/third_party/pkg_tested
+	rm -rf original/packages/front_end-0.1.6/testcases
 
 # "original" -> "stripped"
 #
@@ -29,7 +30,7 @@ remove_stuff:
 # that looks like what a Dart user would write in an optional semicolon world.
 stripped:
 	rm -rf stripped
-	dart ../../scripts/bin/remove_trailing_semicolons.dart original stripped
+	dart ../../scripts/bin/strip_semicolons.dart original stripped
 
 # "original" -> "baseline"
 #
@@ -85,4 +86,4 @@ parse-stripped:
 	dart ../../code/dart_style_semicolon/bin/format.dart --optional-semicolons \
 			-o parse-stripped stripped
 
-.PHONY: baseline parse-baseline parse-original parse-stripped stripped
+.PHONY: baseline parse-baseline parse-original parse-stripped remove_stuff stripped
