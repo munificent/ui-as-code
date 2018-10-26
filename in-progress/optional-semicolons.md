@@ -252,7 +252,7 @@ Given some set of rules for eliminating semicolons, how can we tell if they are
 
 *   **Unambiguity** - Removing mandatory semicolons as terminators can lead to
     ambiguous cases where both ignoring a newline or treating it as a semicolon
-    lead to valid parses. Any grammar *must* be unambiguous&mdash;users don't
+    lead to valid parses. Any syntax *must* be unambiguous&mdash;users don't
     like it if their code is parsed differently on different days of the week.
     When given an ambiguous choice, it must resolve it in a way that aligns with
     the user's intention as often as possible.
@@ -335,7 +335,7 @@ the user intends.
 
 Any optional semicolon system has to resolve these ambiguities and do it in a
 way that agrees with the user's intention. This is why optional semicolons can
-be difficult. Most of these ambiguities center around *statement expressions*.
+be difficult. Most of these ambiguities center around *expression statements*.
 That's the corner of the language where the rich expression grammar comes into
 play, and where a semicolon is often necessary to separate two expression
 statements.
@@ -478,6 +478,24 @@ the user wants an empty body (typically a loop where the condition expression
 has a side effect), they can use an empty block, which is usually more readable
 anyway.
 
+Without empty statements, we know that a newline inside a control flow statement
+(after the if and while condition, after `else`, etc.) *cannot* be meaningful.
+Thus, we can safely ignore it, which means that this:
+
+```dart
+if (condition)
+  body();
+```
+
+Continues to be parsed like:
+
+```dart
+if (condition) body();
+```
+
+Just like it is today. That means the 6,102 existing cases like this are not
+broken, at the expense of having to fix the 17 uses of empty statements.
+
 **TODO: The prototype doesn't currently implement this restriction, but there
 are only a handful of cases where it occurs.**
 
@@ -512,8 +530,9 @@ significant before these operators. That means one of these operators at the
 beginning of a line is treated like a unary operator if possible.
 
 Note that these are *only* a problem at the "top level" of a statement
-expression. Once the operator is nested inside parenthese or an argument list or
-something, a semicolon is never allowed and we know we can ignore the newline.
+expression. Once the operator is nested inside parentheses or an argument list
+or something, a semicolon is never allowed and we know we can ignore the
+newline.
 
 The set of operators affected are:
 
@@ -640,7 +659,7 @@ a.b c; // Declare "c" of type "b" from prefixed library "a".
 
 Code like this is rare either way. In the corpus:
 
-*   There are **754,851** statement expressions.
+*   There are **754,851** expression statements.
 *   **189** (0.025%) are single identifiers like `a`.
 *   **92** (0.012%) are prefixed/getters like `a.b`.
 *   There are **307,908** local variable declarations.
@@ -656,13 +675,13 @@ Code like this is rare either way. In the corpus:
     declaration easily fits on one line.)
 
 Since this is so rare, it doesn't matter much which way we pick. The eagerness
-principle prefers treating it as two statement expressions, so we stick with
+principle prefers treating it as two expression statements, so we stick with
 that. The user can always get a local variable declaration by *removing* the
 newline. If we picked the other option, they would have to add an explicit
-semicolon if they *did* want two identifier statement expressions.
+semicolon if they *did* want two identifier expression statements.
 
 Note that this is only an ambiguity for *local* variables. For fields and
-top-level variables, there are no statement expressions, so no ambiguity. That's
+top-level variables, there are no expression statements, so no ambiguity. That's
 good because newlines between types and variables are more common there:
 
 *   There are **152,370** field declarations.
@@ -694,15 +713,14 @@ final c d = 1;
 As above, eagerness says we prefer the first option. There are no cases of this
 in the corpus.
 
-#### Return types on local functions
+#### Local function return types
 
 Inside a block:
 
 ```dart
 main() {
   foo
-  bar()
-  {}
+  bar() {}
 }
 ```
 
@@ -711,8 +729,7 @@ Could be either:
 ```dart
 main() {
   foo;
-  bar();
-  {}
+  bar() {}
 }
 ```
 
@@ -724,8 +741,21 @@ main() {
 }
 ```
 
-Eagerness says we pick the former. The corpus contains **12,785** local
-functions:
+This ambiguity only exists for return types that are also syntactically valid
+expressions. A bare identifier like the example here is one, but most return
+types long enough to be split tend to be function types which can't be parsed as
+an expression, as in:
+
+```dart
+Function(int i)
+returnsFunction() {}
+```
+
+Here, because of the parameter name and type, the `Function(int i`) part can't
+be parsed as an expression statement.
+
+But, in cases where it is ambiguous, eagerness says we pick the former. The
+corpus contains **12,785** local functions:
 
 *   **9,600** (75.088%) don't have a return type at all.
 *   **3,184** (24.904%) have a return type on the same line as the function
@@ -741,7 +771,8 @@ functions:
     }
     ```
 
-    Since there isn't a newline before the `{`, this still avoids the ambiguity.
+    In this case, the line containing the return type can't be parsed as an
+    expression statement, so this still avoids the ambiguity.
 
 #### Local function block bodies
 
@@ -772,7 +803,9 @@ function(a, b) {
 ```
 
 This is only an issue for *local* functions since bare block statements aren't
-allowed at the declaration level.
+allowed at the declaration level. It's also only an issue with local functions
+that don't have types for any of their parameters, so that the parameter list
+could also be parsed as an argument list.
 
 There are **12,785** local functions with block bodies in the corpus and none of
 them put the `{` on the next line. (K&R style is completely victorious over
@@ -812,8 +845,54 @@ class Foo {
 I haven't encountered any examples of this. As eagerness says, we pick the first
 interpretation.
 
-**TODO: Is there ambiguity around types that involve function types returning
-function types?**
+#### Hanging break and continue labels
+
+The rarer cousins to hanging returns. The `break` and `continue` statements
+allow jumping to a named label, so this:
+
+```dart
+break
+foo
+
+continue
+foo
+```
+
+Could be either:
+
+```dart
+break;
+foo;
+
+continue;
+foo;
+```
+
+or:
+
+```dart
+break foo;
+
+continue foo;
+```
+
+In the corpuse, there are **5,992** break statements:
+
+*   **5,948** (99.266%) don't have a label.
+
+*   **44** (0.734%) have a label on the same line. None of them put the label
+    on the next line.
+
+There are *1,605* continue statements.
+
+*   **1,535** (95.639%) don't have a label.
+
+*   **70** (4.361%) have a label on the same line. None of them put the label
+    on the next line.
+
+Since the label can only be a single bare identifier, it's unlikely a user will
+feel a need to move it to its own line. So we stick with eagerness and treat the
+newlines as significant.
 
 **TODO: Are there other ambiguities caused by contextual keywords possibly
 being used as identifiers?**
@@ -943,7 +1022,7 @@ style.
     idiosyncratic coding styles by doing these investigations.)
 
 *   **5** (0.025%) are newlines after a local variable's type, which causes it
-    to be split into two statement expressions.
+    to be split into two expression statements.
 
 In other words, about **one in every 305 files** (0.282%) would need a small
 tweak after removing the semicolons to get it back to what the user intends.
@@ -1113,9 +1192,10 @@ To use terminating tokens we introduce a couple of special grammar terminals:
     matches but does not consume a terminating token. Think of it like a
     zero-width lookahead in a regular expression.
 
-*   The `NO_TERM` rule does *not* match if the current token is terminating and
-    is not in expression context. This is used to prohibit a newline from being
-    ignored in places that would break the eagerness principle, like:
+*   The `NO_TERM` rule matches if the current token is non-terminating or if we
+    are in an expression context. Like `TERM`, when it matches, it doesn't
+    consume the token. This is used to prohibit a newline from being ignored in
+    places that would break the eagerness principle, like:
 
     ```dart
     foo() {
@@ -1128,8 +1208,9 @@ To use terminating tokens we introduce a couple of special grammar terminals:
     that the newline before `(` cannot be ignored and lead this to be parsed
     as `bar(arg)`.
 
-*   The `NO_STMT_TERM` rule is like `NO_TERM` except it only prohibits a
-    terminating token in a statement context, not a declaration context.
+*   The `NO_STMT_TERM` rule is like `NO_TERM` except it permits terminating
+    tokens in a declaration context. It only prohibits terminating tokens in a
+    statement context.
 
     (We could eliminate this rule by duplicating every grammar rule used in both
     statement and declaration contexts and then inserting `NO_TERM` only in the
@@ -1155,9 +1236,7 @@ Next, we weave these new rules into the grammar:
     *   `expressionStatement`
     *   `doStatement`
     *   `rethrowStatement`
-    *   `breakStatement`
     *   `assertStatement`
-    *   `continueStatement`
     *   `topLevelDefinition`
 
     This is the main change that makes semicolons actually optional.
@@ -1188,9 +1267,14 @@ Next, we weave these new rules into the grammar:
 
     ```
     statement:
-      label* ( nonLabelledStatement | ';' )
+      label* nonLabelledStatement |
+      ';'
       ;
     ```
+
+    (This also eliminates support for labeled empty statements. That isn't
+    needed by this proposal, but it seems like a good time to disallow that
+    pointless construction.)
 
     Add:
 
@@ -1244,9 +1328,9 @@ Next, we weave these new rules into the grammar:
     the resulting code to be parsed differently. I've never seen a newline
     appear here in real code.
 
-*   No changes are needed for adjacent strings. The specification says adjacent
-    string literal tokens are implicitly concatenated and that process happens
-    before parsing when terminating tokens might come into play.
+*   No changes are needed for adjacent strings. Since we *do* allow and ignore
+    newlines between a series of strings, the existing grammar rule for
+    `stringLiteral` is fine.
 
 *   Change `declaredIdentifier` to:
 
@@ -1299,6 +1383,19 @@ Next, we weave these new rules into the grammar:
       get c {}
     }
     ```
+
+*   Insert `NO_TERM` in:
+
+    ```
+    breakStatement:
+      'break' NO_TERM identifier? TERM
+
+    continueStatement:
+      'continue' NO_TERM identifier? TERM
+    ```
+
+    This makes the `;` optional and addresses ambiguity with hanging break
+    and continue labels.
 
 ## Migration
 

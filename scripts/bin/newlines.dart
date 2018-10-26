@@ -17,6 +17,16 @@ final modifier = new Histogram<String>();
 final function = new Histogram<String>();
 final strings = new Histogram<String>();
 final blockFunction = new Histogram<String>();
+final breaks = new Histogram<String>();
+final continues = new Histogram<String>();
+
+abstract class Interface {
+  foo();
+}
+
+abstract class Supe implements Interface {}
+
+class Sub extends Supe {}
 
 /// Counts how many times a newline appears between various places in the
 /// grammar.
@@ -32,6 +42,8 @@ void main(List<String> arguments) {
   function.printDescending("Local functions");
   strings.printDescending("Adjacent strings");
   blockFunction.printDescending("Block local functions");
+  breaks.printDescending("Break labels");
+  continues.printDescending("Continue labels");
 }
 
 class VariableVisitor extends Visitor {
@@ -44,6 +56,28 @@ class VariableVisitor extends Visitor {
     }
 
     super.visitAdjacentStrings(node);
+  }
+
+  @override
+  void visitBreakStatement(BreakStatement node) {
+    if (node.label != null) {
+      _check("break label", breaks, node.label);
+    } else {
+      breaks.add("no label");
+    }
+
+    super.visitBreakStatement(node);
+  }
+
+  @override
+  void visitContinueStatement(ContinueStatement node) {
+    if (node.label != null) {
+      _check("continue label", continues, node.label);
+    } else {
+      continues.add("no label");
+    }
+
+    super.visitContinueStatement(node);
   }
 
   @override
