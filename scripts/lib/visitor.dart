@@ -21,6 +21,7 @@ class Visitor extends RecursiveAstVisitor<void> {
       FormalParameterList parameters) {
     var parameterString = parameters.toString();
 
+    if (returnType.toString() == "void") return false;
     if (parameterString.startsWith("(BuildContext context")) return true;
     if (returnType.toString() == "Widget") return true;
 
@@ -33,13 +34,18 @@ class Visitor extends RecursiveAstVisitor<void> {
   }
 
   void printNode(AstNode node) {
+    print(nodeToString(node));
+  }
+
+  String nodeToString(AstNode node) {
     var startLine = lineInfo.getLocation(node.offset).lineNumber;
     var endLine = lineInfo.getLocation(node.end).lineNumber;
 
     startLine = startLine.clamp(0, lineInfo.lineCount - 1);
     endLine = endLine.clamp(0, lineInfo.lineCount - 1);
 
-    print("$path:$startLine");
+    var buffer = StringBuffer();
+    buffer.writeln("// $path:$startLine");
     for (var line = startLine; line <= endLine; line++) {
       // Note that getLocation() returns 1-based lines, but getOffsetOfLine()
       // expects 0-based.
@@ -47,8 +53,10 @@ class Visitor extends RecursiveAstVisitor<void> {
       // -1 to not include the newline.
       var end = lineInfo.getOffsetOfLine(line) - 1;
 
-      print("| ${_source.substring(offset, end)}");
+      buffer.writeln(_source.substring(offset, end));
     }
+
+    return buffer.toString();
   }
 
   int getLine(int offset) => lineInfo.getLocation(offset).lineNumber;

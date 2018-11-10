@@ -20,14 +20,6 @@ final blockFunction = new Histogram<String>();
 final breaks = new Histogram<String>();
 final continues = new Histogram<String>();
 
-abstract class Interface {
-  foo();
-}
-
-abstract class Supe implements Interface {}
-
-class Sub extends Supe {}
-
 /// Counts how many times a newline appears between various places in the
 /// grammar.
 void main(List<String> arguments) {
