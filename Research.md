@@ -37,7 +37,7 @@ Lua was designed as [a data and configuration language](https://www.lua.org/pil/
 *   [Hyperscript](https://github.com/hyperhype/hyperscript).
 *   Android XML layout.
 *   XAML
-*   QML
+*   [QML](http://doc.qt.io/qt-5/qmlreference.html)
 *   Angular templates
 *   Ruby [splats and destructuring](http://blog.honeybadger.io/ruby-splat-array-manipulation-destructuring/)
 *   [Anko Layouts](https://github.com/Kotlin/anko/wiki/Anko-Layouts)
