@@ -113,7 +113,11 @@ void _parseFile(
 
 /// A simple [AnalysisErrorListener] that just collects the reported errors.
 class ErrorListener implements AnalysisErrorListener {
+  bool _hadError = false;
+  bool get hadError => _hadError;
+
   void onError(AnalysisError error) {
-//    print(error);
+    _hadError = true;
+    print(error);
   }
 }

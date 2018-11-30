@@ -32,6 +32,13 @@ void main(List<String> arguments) {
 class BuildVisitor extends Visitor {
   BuildVisitor(String path) : super(path);
 
+  Declaration _builder;
+
+  @override
+  void beforeVisitBuildMethod(Declaration node) {
+    _builder = node;
+  }
+
   @override
   void afterVisitBuildMethod(Declaration node) {
     var startLine = lineInfo.getLocation(node.offset).lineNumber;
@@ -48,26 +55,30 @@ class BuildVisitor extends Visitor {
 
     if (!isInBuildMethod) return;
 
-    String name;
-    if (node.target == null) {
-      name = node.methodName.name;
-    } else if (node.target is SimpleIdentifier) {
-      name = "${node.target}.${node.methodName}";
-    } else {
-      // Instance method call.
-      return;
+    if (node.methodName.name == "map") {
+      printNode(_builder);
     }
 
-    if (name.codeUnitAt(0) >= 65 && name.codeUnitAt(0) <= 90) {
-      var signature = node.argumentList.arguments.map((arg) {
-        if (arg is NamedExpression) return "${arg.name.label.name}";
-        return "_";
-      }).toList();
-      signature.sort();
-
-      constructors.add(name);
-      signatures.add("$name(${signature.join(',')})");
-      invocations.add(node.toString());
-    }
+//    String name;
+//    if (node.target == null) {
+//      name = node.methodName.name;
+//    } else if (node.target is SimpleIdentifier) {
+//      name = "${node.target}.${node.methodName}";
+//    } else {
+//      // Instance method call.
+//      return;
+//    }
+//
+//    if (name.codeUnitAt(0) >= 65 && name.codeUnitAt(0) <= 90) {
+//      var signature = node.argumentList.arguments.map((arg) {
+//        if (arg is NamedExpression) return "${arg.name.label.name}";
+//        return "_";
+//      }).toList();
+//      signature.sort();
+//
+//      constructors.add(name);
+//      signatures.add("$name(${signature.join(',')})");
+//      invocations.add(node.toString());
+//    }
   }
 }

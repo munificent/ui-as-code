@@ -106,14 +106,3 @@ void main(List<String> arguments) {
 
   print("Removed $stripped semicolons, $remaining remain.");
 }
-
-void temp() {
-  var _counter = 3;
-  print('Button tapped $_counter time${_counter == 1 ? '' : 's'}.');
-  callback() {
-    print(1);
-    print(2);
-  }
-}
-
-// Trailing comment.

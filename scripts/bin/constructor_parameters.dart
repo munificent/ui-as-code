@@ -59,6 +59,22 @@ class ConstructorVisitor extends Visitor {
     print("  )");
   }
 
+  void showTerse(
+      String label, ClassDeclaration node, ConstructorDeclaration ctor, List<String> params) {
+    var buffer = StringBuffer();
+
+    buffer.write("$label: ");
+    if (ctor.name == null) {
+      buffer.write("${node.name.name}(");
+    } else {
+      buffer.write("${node.name.name}.${ctor.name.name}(");
+    }
+
+    buffer.writeAll(params, ", ");
+    buffer.write(") // $path");
+    print(buffer);
+  }
+
   void visitClassDeclaration(ClassDeclaration node) {
     TypeAnnotation findFieldType(String name) {
       for (var member in node.members) {
@@ -78,11 +94,15 @@ class ConstructorVisitor extends Visitor {
         var params = <String>[];
         var listCount = 0;
         var widgetCount = 0;
+        var hasChild = false;
+        var hasChildren = false;
 
         checkParam(SimpleIdentifier name, TypeAnnotation type) {
           type ??= findFieldType(name.name);
           if (type.toString().contains("List<")) listCount++;
           if (type.toString() == "Widget") widgetCount++;
+          if (name.name == "child") hasChild = true;
+          if (name.name == "children") hasChildren = true;
           params.add("${name.name}: $type");
         }
 
@@ -104,7 +124,13 @@ class ConstructorVisitor extends Visitor {
 
         listParamCounts.add(listCount);
         widgetParamCounts.add(widgetCount);
-        if (listCount > 1 || widgetCount > 1) show(node, member, params);
+//        if (listCount > 1 || widgetCount > 1) show(node, member, params);
+        if (hasChildren) {
+          showTerse("children", node, member, params);
+        }
+        if (hasChild) {
+          showTerse("child", node, member, params);
+        }
       }
     }
     return null;
