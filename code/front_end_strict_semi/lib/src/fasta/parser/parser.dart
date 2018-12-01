@@ -1120,6 +1120,11 @@ class Parser {
     }
     token = parseArgumentsOpt(token);
     listener.endMetadata(atToken, period, token.next);
+
+    // DONE(semicolon): Something must always come after metadata and newlines
+    // are usually there, so ignore them.
+    token = _ignoreImplicitSemicolonNext(token);
+
     return token;
   }
 
@@ -5270,6 +5275,11 @@ class Parser {
     listener.beginIfStatement(ifToken);
     token = parseParenthesizedCondition(ifToken);
     listener.beginThenStatement(token.next);
+
+    // DONE(semicolon): Ignore a newline after the ")". (Don't treat it as an
+    // empty statement because that's likely not what the user wants.
+    token = _ignoreImplicitSemicolonNext(token);
+
     token = parseStatement(token);
     listener.endThenStatement(token);
     Token elseToken = null;
@@ -5436,6 +5446,11 @@ class Parser {
       reportRecoverableErrorWithToken(token, fasta.templateUnexpectedToken);
       token = leftParenthesis.endGroup;
     }
+
+    // DONE(semicolon): Ignore a newline after the ")". (Don't treat it as an
+    // empty statement because that's likely not what the user wants.
+    token = _ignoreImplicitSemicolonNext(token);
+
     listener.beginForStatementBody(token.next);
     LoopState savedLoopState = loopState;
     loopState = LoopState.InsideLoop;
@@ -5487,6 +5502,11 @@ class Parser {
     assert(optional('while', whileToken));
     listener.beginWhileStatement(whileToken);
     token = parseParenthesizedCondition(whileToken);
+
+    // DONE(semicolon): Ignore a newline after the ")". (Don't treat it as an
+    // empty statement because that's likely not what the user wants.
+    token = _ignoreImplicitSemicolonNext(token);
+
     listener.beginWhileStatementBody(token.next);
     LoopState savedLoopState = loopState;
     loopState = LoopState.InsideLoop;
@@ -5549,7 +5569,13 @@ class Parser {
     }
     token = token.next;
     assert(optional('}', token));
+
     listener.endBlock(statementCount, begin, token);
+
+    // DONE(semicolon): Ignore a newline after the block. Block statements
+    // don't end with a semicolon.
+    token = _ignoreImplicitSemicolonNext(token);
+
     return token;
   }
 
