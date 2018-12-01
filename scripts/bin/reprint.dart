@@ -14,10 +14,6 @@ import 'package:ui_as_code_tools/parser.dart';
 
 /// Pretty-prints Dart source files.
 void main(List<String> arguments) {
-  if (arguments.isEmpty) {
-    arguments = ['/Users/rnystrom/dev/ui-as-code/data/optional-semicolons/original/flutter/packages/flutter_tools/test/data/dart_dependencies_test/changed_sdk_location/lib/main.dart'];
-  }
-
   forEachDartFile(arguments[0], includeTests: true, callback: (file, relative) {
     if (arguments.length > 1) {
       print(relative);

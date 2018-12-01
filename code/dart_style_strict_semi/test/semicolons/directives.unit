@@ -1,0 +1,208 @@
+40 columns                              |
+>>>
+library foo.bar
+<<<
+library foo.bar;
+>>>
+library foo.bar
+import 'foo.dart';
+<<<
+library foo.bar;
+
+import 'foo.dart';
+>>>
+import 'foo.dart'
+<<<
+import 'foo.dart';
+>>>
+import
+'foo.dart'
+<<<
+import 'foo.dart';
+>>>
+import 'foo.dart'
+main() {}
+<<<
+import 'foo.dart';
+
+main() {}
+>>>
+import 'foo.dart' show a
+main() {}
+<<<
+import 'foo.dart' show a;
+
+main() {}
+>>>
+import 'foo.dart'
+show a
+main() {}
+<<<
+import 'foo.dart' show a;
+
+main() {}
+>>>
+import 'foo.dart' show
+a
+main() {}
+<<<
+import 'foo.dart' show a;
+
+main() {}
+>>>
+import 'foo.dart' show a
+,b
+main() {}
+<<<
+import 'foo.dart' show a, b;
+
+main() {}
+>>>
+import 'foo.dart' show a,
+b
+main() {}
+<<<
+import 'foo.dart' show a, b;
+
+main() {}
+>>>
+import 'foo.dart' show a
+hide
+b
+main() {}
+<<<
+import 'foo.dart' show a hide b;
+
+main() {}
+>>>
+export 'foo.dart'
+<<<
+export 'foo.dart';
+>>>
+export
+'foo.dart'
+<<<
+export 'foo.dart';
+>>>
+export 'foo.dart'
+main() {}
+<<<
+export 'foo.dart';
+
+main() {}
+>>>
+export 'foo.dart' show a
+main() {}
+<<<
+export 'foo.dart' show a;
+
+main() {}
+>>>
+export 'foo.dart'
+show a
+main() {}
+<<<
+export 'foo.dart' show a;
+
+main() {}
+>>>
+export 'foo.dart' show
+a
+main() {}
+<<<
+export 'foo.dart' show a;
+
+main() {}
+>>>
+export 'foo.dart' show a
+,b
+main() {}
+<<<
+export 'foo.dart' show a, b;
+
+main() {}
+>>>
+export 'foo.dart' show a,
+b
+main() {}
+<<<
+export 'foo.dart' show a, b;
+
+main() {}
+>>>
+export 'foo.dart' show a
+hide
+b
+main() {}
+<<<
+export 'foo.dart' show a hide b;
+
+main() {}
+>>>
+part 'foo.dart'
+<<<
+part 'foo.dart';
+>>>
+part
+'foo.dart'
+<<<
+part 'foo.dart';
+>>>
+part 'foo.dart'
+main() {}
+<<<
+part 'foo.dart';
+
+main() {}
+>>>
+part of 'foo.dart'
+<<<
+part of 'foo.dart';
+>>>
+part
+of 'foo.dart'
+<<<
+part of 'foo.dart';
+>>>
+part of
+'foo.dart'
+<<<
+part of 'foo.dart';
+>>>
+part of 'foo.dart'
+main() {}
+<<<
+part of 'foo.dart';
+
+main() {}
+>>>
+part of foo.bar
+<<<
+part of foo.bar;
+>>>
+part
+of foo.bar
+<<<
+part of foo.bar;
+>>>
+part of
+foo.bar
+<<<
+part of foo.bar;
+>>>
+part of foo
+.bar
+<<<
+part of foo.bar;
+>>>
+part of foo.
+bar
+<<<
+part of foo.bar;
+>>>
+part of foo.bar
+main() {}
+<<<
+part of foo.bar;
+
+main() {}

@@ -1,0 +1,147 @@
+40 columns                              |
+>>>
+main() {
+var a = "a"
+var f = (a) {}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a) {};
+}
+>>> newline between ")" and "{" is significant
+main() {
+var a = "a"
+var f = (a)
+{}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a);
+  {}
+}
+>>> but not in expr-only context
+main() {
+var a = "a"
+var f = ((a)
+{})
+}
+<<<
+main() {
+  var a = "a";
+  var f = ((a) {});
+}
+>>> newline between ")" and "async" is significant
+main() {
+var a = "a"
+var f = (a)
+async
+{}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a);
+  async;
+  {}
+}
+>>> newline between "async" and "{" is not significant
+main() {
+var a = "a"
+var f = (a) async
+{}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a) async {};
+}
+>>> arrow bodies
+main() {
+var a = "a"
+var f = (a) => 1
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a) => 1;
+}
+>>> newline between ")" and "=>" is significant
+main() {
+var a = "a"
+var f = (a)
+=> 1
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a) => 1;
+}
+>>> but not in expr-only context
+main() {
+var a = "a"
+var f = ((a)
+=> 1)
+}
+<<<
+main() {
+  var a = "a";
+  var f = ((a) => 1);
+}
+>>> newline between ")" and "async" is significant
+main() {
+var a = "a"
+var f = (a)
+async
+=> 1
+}
+<<<
+parse error
+>>> newline between "async" and "=>" is not significant
+main() {
+var a = "a"
+var f = (a) async
+=> 1
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a) async => 1;
+}
+>>> newline between ")" and "{" is not significant at top level
+var a = "a"
+var f = (a)
+{}
+<<<
+var a = "a";
+var f = (a) {};
+>>> newline between ")" and "{" is not significant in class
+class Foo {
+var a = "a"
+var f = (a)
+{}
+}
+<<<
+class Foo {
+  var a = "a";
+  var f = (a) {};
+}
+>>> newline between ")" and "=>" is not significant at top level
+var a = "a"
+var f = (a)
+=> 1
+<<<
+var a = "a";
+var f = (a) => 1;
+>>> newline between ")" and "=>" is not significant in class
+class Foo {
+var a = "a"
+var f = (a)
+=> 1
+}
+<<<
+class Foo {
+  var a = "a";
+  var f = (a) => 1;
+}

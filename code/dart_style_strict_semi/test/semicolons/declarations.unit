@@ -1,0 +1,240 @@
+40 columns                              |
+>>> expression-bodied function
+a() => 123
+<<<
+a() => 123;
+>>>
+a() => 123
+b() {}
+<<<
+a() => 123;
+b() {}
+>>> local function
+main() {
+  a() => b
+  - c
+}
+<<<
+main() {
+  a() => b;
+  -c;
+}
+>>> top-level variable
+var a = b
++c
+<<<
+var a = b + c;
+>>> local variable
+main() {
+  var a = b
+  - c
+  var d = e
+  +f
+}
+<<<
+main() {
+  var a = b;
+  -c;
+  var d = e + f;
+}
+>>> old-style typedef
+typedef void Foo<T>(T t)
+<<<
+typedef void Foo<T>(T t);
+>>> new-style typedef
+typedef Foo = void Function(int)
+<<<
+typedef Foo = void Function(int);
+>>>
+typedef Foo = void Function(int)
+Function(int)
+<<<
+typedef Foo = void Function(int)
+    Function(int);
+>>> field
+class Foo { var field = 1
++ 2}
+<<<
+class Foo {
+  var field = 1 + 2;
+}
+>>> empty constructor
+class Foo { Foo() : super() }
+<<<
+class Foo {
+  Foo() : super();
+}
+>>>
+class Foo { Foo() : a = 1 - 2 }
+<<<
+class Foo {
+  Foo() : a = 1 - 2;
+}
+>>>
+main() {
+  prefixed.Type
+  variable
+}
+<<<
+main() {
+  prefixed.Type;
+  variable;
+}
+>>>
+main() {
+  Type
+    variable
+}
+<<<
+main() {
+  Type;
+  variable;
+}
+>>> redirecting factory constructor
+class Foo {
+  factory Foo() = Bar
+}
+<<<
+class Foo {
+  factory Foo() = Bar;
+}
+>>>
+class Foo {
+  factory Foo() = Bar<int,
+    double>
+}
+<<<
+class Foo {
+  factory Foo() = Bar<int, double>;
+}
+>>>
+class IDLConstant {
+  var value
+  IDLConstant()
+}
+<<<
+class IDLConstant {
+  var value;
+  IDLConstant();
+}
+>>> const constructor
+class TypingCapability {
+  const TypingCapability(Type upperBound)
+}
+<<<
+class TypingCapability {
+  const TypingCapability(
+      Type upperBound);
+}
+>>> should preserve whitespace
+import 'dart:io' as system
+
+// this is a test
+
+void main() {
+  killPid(system.pi); // .
+}
+<<<
+import 'dart:io' as system;
+
+// this is a test
+
+void main() {
+  killPid(system.pi); // .
+}
+>>>
+class Foo {
+  Foo()
+
+  int field
+}
+<<<
+class Foo {
+  Foo();
+
+  int field;
+}
+>>>
+class _WidgetInspectorService = Object with WidgetInspectorService
+<<<
+class _WidgetInspectorService = Object
+    with WidgetInspectorService;
+>>>
+class A {
+  foo() => bar.baz
+  another() {}
+}
+<<<
+class A {
+  foo() => bar.baz;
+  another() {}
+}
+>>>
+abstract class QuillOptionsStatic {
+  external String foo()
+  external bar()
+}
+<<<
+abstract class QuillOptionsStatic {
+  external String foo();
+  external bar();
+}
+>>>
+external String foo()
+external bar()
+<<<
+external String foo();
+external bar();
+>>>
+class ByteData {
+  double _getFloat32(int byteOffset, [bool littleEndian]) native
+
+  double getFloat64(int byteOffset, [Endian endian = Endian.big]) =>
+      _getFloat64(byteOffset, Endian.little == endian)
+}
+<<<
+class ByteData {
+  double _getFloat32(int byteOffset,
+      [bool littleEndian]) native;
+
+  double getFloat64(int byteOffset,
+          [Endian endian =
+              Endian.big]) =>
+      _getFloat64(byteOffset,
+          Endian.little == endian);
+}
+>>>
+abstract class AuthJsImpl {
+  external factory AuthJsImpl()
+  external static String get PROVIDER_ID
+}
+<<<
+abstract class AuthJsImpl {
+  external factory AuthJsImpl();
+  external static String
+      get PROVIDER_ID;
+}
+>>>
+class AccountsResourceApi {
+  AccountsResourceApi()
+  async.Future foo() {}
+}
+<<<
+class AccountsResourceApi {
+  AccountsResourceApi();
+  async.Future foo() {}
+}
+>>>
+abstract class JsToElementMap {
+  Name getName(ir.Name name)
+
+  native.NativeBehavior getNativeBehaviorForJsCall(ir.StaticInvocation node)
+}
+<<<
+abstract class JsToElementMap {
+  Name getName(ir.Name name);
+
+  native.NativeBehavior
+      getNativeBehaviorForJsCall(
+          ir.StaticInvocation node);
+}

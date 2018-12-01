@@ -1,0 +1,141 @@
+40 columns                              |
+>>>
+main() {
+  123
+}
+<<<
+main() {
+  123;
+}
+>>>
+main() { 123 }
+<<<
+main() {
+  123;
+}
+>>>
+main() async => await future
+<<<
+main() async => await future;
+>>>
+main() async => await
+future
+<<<
+main() async => await future;
+>>>
+throw error
+<<<
+throw error;
+>>>
+throw
+error
+<<<
+throw error;
+>>>
+var names = []
+<<<
+var names = [];
+>>>
+{
+  property.access
+  function()
+}
+<<<
+{
+  property.access;
+  function();
+}
+>>>
+{
+  identifier
+  function()
+}
+<<<
+{
+  identifier;
+  function();
+}
+>>>
+{
+  function()
+  ++prefix
+}
+<<<
+{
+  function();
+  ++prefix;
+}
+>>> split before "as"
+a
+as b
+<<<
+a as b;
+>>> split after "as"
+a as
+b
+<<<
+a as b;
+>>> split before "is"
+a
+is b
+<<<
+a is b;
+>>> split after "is"
+a is
+b
+<<<
+a is b;
+>>>
+{
+  "adjacent"
+  "string"
+}
+<<<
+{
+  "adjacent"
+      "string";
+}
+>>>
+{
+  foo
+  (bar)
+}
+<<<
+{
+  foo;
+  (bar);
+}
+>>>
+{
+  this
+  (bar)
+}
+<<<
+{
+  this;
+  (bar);
+}
+>>>
+{
+  foo
+  [bar]
+}
+<<<
+{
+  foo;
+  [bar];
+}
+>>>
+{
+  buffer
+    ..writeln('typedef struct {')
+    ..indent()
+  (type as Struct).fields.forEach((f) => f.generate(buffer))
+}
+<<<
+{
+  buffer
+    ..writeln('typedef struct {')
+    ..indent();
+  (type as Struct).fields.forEach((f) => f.generate(buffer));
+}

@@ -1,0 +1,101 @@
+40 columns                              |
+>>>
+main() {
+  assert(true)
+}
+<<<
+main() {
+  assert(true);
+}
+>>>
+main() { assert(true) }
+<<<
+main() {
+  assert(true);
+}
+>>>
+main() {
+  assert
+  (true)
+}
+<<<
+main() {
+  assert(true);
+}
+>>>
+main() {
+  assert(
+  true)
+}
+<<<
+main() {
+  assert(true);
+}
+>>>
+main() {
+  assert(true
+  )
+}
+<<<
+main() {
+  assert(true);
+}
+>>>
+main() {
+  assert(true, "message")
+}
+<<<
+main() {
+  assert(true, "message");
+}
+>>>
+main() { assert(true, "message") }
+<<<
+main() {
+  assert(true, "message");
+}
+>>>
+main() {
+  assert
+  (true, "message")
+}
+<<<
+main() {
+  assert(true, "message");
+}
+>>>
+main() {
+  assert(
+  true, "message")
+}
+<<<
+main() {
+  assert(true, "message");
+}
+>>>
+main() {
+  assert(true
+  , "message")
+}
+<<<
+main() {
+  assert(true, "message");
+}
+>>>
+main() {
+  assert(true,
+  "message")
+}
+<<<
+main() {
+  assert(true, "message");
+}
+>>>
+main() {
+  assert(true, "message"
+  )
+}
+<<<
+main() {
+  assert(true, "message");
+}

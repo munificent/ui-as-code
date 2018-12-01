@@ -1,0 +1,63 @@
+40 columns                              |
+>>>
+main() sync* {
+  yield 123
+}
+<<<
+main() sync* {
+  yield 123;
+}
+>>>
+main() sync* { yield 123 }
+<<<
+main() sync* {
+  yield 123;
+}
+>>> TODO: Make this an error to be consistent with "return"?
+main() sync* {
+  yield
+    123
+}
+<<<
+main() sync* {
+  yield 123;
+}
+>>>
+main() sync* {
+  yield
+      123 }
+<<<
+main() sync* {
+  yield 123;
+}
+>>>
+main() sync* {
+  yield* 123
+}
+<<<
+main() sync* {
+  yield* 123;
+}
+>>>
+main() sync* { yield* 123 }
+<<<
+main() sync* {
+  yield* 123;
+}
+>>>
+main() sync* {
+  yield*
+    123
+}
+<<<
+main() sync* {
+  yield* 123;
+}
+>>>
+main() sync* {
+  yield*
+      123 }
+<<<
+main() sync* {
+  yield* 123;
+}

@@ -1,0 +1,123 @@
+40 columns                              |
+>>>
+for (;;) {
+  break
+}
+<<<
+for (;;) {
+  break;
+}
+>>>
+for (;;) { break }
+<<<
+for (;;) {
+  break;
+}
+>>>
+for (;;) {
+  break label
+}
+<<<
+for (;;) {
+  break label;
+}
+>>>
+for (;;) { break label }
+<<<
+for (;;) {
+  break label;
+}
+>>>
+for (;;) {
+  break
+    label
+}
+<<<
+for (;;) {
+  break;
+  label;
+}
+>>>
+for (;;) {
+  break
+      label }
+<<<
+for (;;) {
+  break;
+  label;
+}
+>>>
+for (;;) {
+  continue
+}
+<<<
+for (;;) {
+  continue;
+}
+>>>
+for (;;) { continue }
+<<<
+for (;;) {
+  continue;
+}
+>>>
+for (;;) {
+  continue label
+}
+<<<
+for (;;) {
+  continue label;
+}
+>>>
+for (;;) { continue label }
+<<<
+for (;;) {
+  continue label;
+}
+>>>
+for (;;) {
+  continue
+    label
+}
+<<<
+for (;;) {
+  continue;
+  label;
+}
+>>>
+for (;;) {
+  continue
+      label }
+<<<
+for (;;) {
+  continue;
+  label;
+}
+>>>
+main() {
+  do {} while (true)
+}
+<<<
+main() {
+  do {} while (true);
+}
+>>>
+main() { do {} while (true) }
+<<<
+main() {
+  do {} while (true);
+}
+>>>
+main() { do {}
+  while (true) }
+<<<
+main() {
+  do {} while (true);
+}
+>>>
+main() { do {} while
+  (true) }
+<<<
+main() {
+  do {} while (true);
+}

@@ -1,0 +1,35 @@
+40 columns                              |
+>>> based on elements-1.0.4/lib/src/checklist_element.dart
+main()
+{
+  try
+  {
+    body();
+  }
+  on StateError
+  {
+    clause();
+  }
+}
+<<<
+main() {
+  try {
+    body();
+  } on StateError {
+    clause();
+  }
+}
+>>> based on l10n-2.0.4/lib/utils.dart
+{
+  bool isValidExtension(final String path)
+      => extensions.any((final String extension) => path.toLowerCase().endsWith("${extension.toLowerCase()}"));
+}
+<<<
+{
+  bool isValidExtension(
+          final String path) =>
+      extensions.any((final String
+              extension) =>
+          path.toLowerCase().endsWith(
+              "${extension.toLowerCase()}"));
+}

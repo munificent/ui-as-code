@@ -1,0 +1,48 @@
+40 columns                              |
+>>>
+main() {
+  return
+}
+<<<
+main() {
+  return;
+}
+>>>
+main() { return }
+<<<
+main() {
+  return;
+}
+>>>
+main() {
+  return 123
+}
+<<<
+main() {
+  return 123;
+}
+>>>
+main() { return 123 }
+<<<
+main() {
+  return 123;
+}
+>>>
+main() {
+  return
+    123
+}
+<<<
+main() {
+  return;
+  123;
+}
+>>>
+main() {
+  return
+      123 }
+<<<
+main() {
+  return;
+  123;
+}
