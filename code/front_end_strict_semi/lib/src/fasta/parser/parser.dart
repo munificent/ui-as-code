@@ -108,6 +108,7 @@ import 'util.dart'
 enum NewlineContext {
   none,
   parentheses,
+  collection,
   block
 }
 
@@ -280,7 +281,8 @@ class Parser {
       _current != null && _current._ignoreNewlines;
 
   bool get _ignoreNewlines {
-    return _contextStack.last == NewlineContext.parentheses;
+    return _contextStack.last == NewlineContext.parentheses ||
+        _contextStack.last == NewlineContext.collection;
   }
 
   final List<NewlineContext> _contextStack = [NewlineContext.none];
@@ -4305,8 +4307,15 @@ class Parser {
   /// the left curly brace when there are no leading type arguments.
   Token parseLiteralSetOrMapSuffix(final Token start, Token constKeyword) {
     if (!enableSetLiterals) {
+
+      _contextStack.add(NewlineContext.collection);
+
       // TODO(danrubel): remove this once set literals are permanent
-      return parseLiteralMapSuffix(start, constKeyword);
+      var token = parseLiteralMapSuffix(start, constKeyword);
+
+      _contextStack.removeLast();
+
+      return token;
     }
 
     Token leftBrace = start.next;
@@ -4317,6 +4326,8 @@ class Parser {
       return rightBrace;
     }
 
+    _contextStack.add(NewlineContext.collection);
+
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
     Token token = parseExpression(leftBrace);
@@ -4325,9 +4336,14 @@ class Parser {
     Token next = token.next;
     if (optional('}', next)) {
       listener.handleLiteralSet(1, leftBrace, constKeyword, next);
+
+      _contextStack.removeLast();
+
       return next;
     } else if (optional(',', next)) {
-      return parseLiteralSetRest(token, constKeyword, leftBrace);
+      token = parseLiteralSetRest(token, constKeyword, leftBrace);
+      _contextStack.removeLast();
+      return token;
     } else {
       // TODO(danrubel): Consider better recovery
       // rather than just assuming this is a literal map.
@@ -4339,7 +4355,9 @@ class Parser {
       mayParseFunctionExpressions = old;
 
       listener.handleLiteralMapEntry(colon, token.next);
-      return parseLiteralMapRest(token, constKeyword, leftBrace);
+      token = parseLiteralMapRest(token, constKeyword, leftBrace);
+      _contextStack.removeLast();
+      return token;
     }
   }
 
