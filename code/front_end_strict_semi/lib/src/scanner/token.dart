@@ -467,7 +467,9 @@ class SimpleToken implements Token {
   Token get previous {
     // DONE(semicolon): Super hack. If the parser is in a context where
     // newlines are not meaningful, skip implicit newlines.
-    if (Parser.ignoreNewlines && _previous.type == TokenType.SEMICOLON_IMPLICIT) {
+    if (Parser.ignoreNewlines &&
+        _previous != null &&
+        _previous.type == TokenType.SEMICOLON_IMPLICIT) {
       return _previous.previous;
     }
 
@@ -480,7 +482,9 @@ class SimpleToken implements Token {
   Token get next {
     // DONE(semicolon): Super hack. If the parser is in a context where
     // newlines are not meaningful, skip implicit newlines.
-    if (Parser.ignoreNewlines && _next.type == TokenType.SEMICOLON_IMPLICIT) {
+    if (Parser.ignoreNewlines &&
+        _next != null &&
+        _next.type == TokenType.SEMICOLON_IMPLICIT) {
       return _next.next;
     }
 

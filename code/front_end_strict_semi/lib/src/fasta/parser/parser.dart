@@ -1921,6 +1921,10 @@ class Parser {
     if (optional('extends', next)) {
       Token extendsKeyword = next;
       token = computeType(next, true).ensureTypeNotVoid(next, this);
+
+      // DONE(semicolon): Must have something after the extends clause.
+      token = _ignoreImplicitSemicolonNext(token);
+
       listener.handleClassExtends(extendsKeyword);
     } else {
       listener.handleNoType(token);
@@ -3427,6 +3431,13 @@ class Parser {
       return next;
     } else if (optional('=>', next)) {
       return parseExpressionFunctionBody(next, ofFunctionExpression);
+    } else if (next.type == TokenType.SEMICOLON_IMPLICIT &&
+        optional('=>', next.next)) {
+      // DONE(semicolon): Ignore a newline between ")" and "=>" in a function
+      // declaration. We could always ignore a newline before "=>" lexically,
+      // but that would prevent us from making the parameter list in a lambda
+      // optional in the future. Doing it here is more targeted.
+      return parseExpressionFunctionBody(next.next, ofFunctionExpression);
     } else if (optional('=', next)) {
       Token begin = next;
       // Recover from a bad factory method.
@@ -3490,6 +3501,13 @@ class Parser {
     assert(optional('}', token));
     listener.endBlockFunctionBody(statementCount, begin, token);
     loopState = savedLoopState;
+
+    // DONE(semicolon): Ignore the insert semicolon after "}" in a local
+    // function declaration statement.
+    if (!ofFunctionExpression) {
+      token = _ignoreImplicitSemicolonNext(token);
+    }
+
     return token;
   }
 
