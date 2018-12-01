@@ -107,8 +107,7 @@ import 'util.dart'
 // significant newlines.
 enum NewlineContext {
   none,
-  parentheses,
-  collection,
+  expression,
   block
 }
 
@@ -281,8 +280,7 @@ class Parser {
       _current != null && _current._ignoreNewlines;
 
   bool get _ignoreNewlines {
-    return _contextStack.last == NewlineContext.parentheses ||
-        _contextStack.last == NewlineContext.collection;
+    return _contextStack.last == NewlineContext.expression;
   }
 
   final List<NewlineContext> _contextStack = [NewlineContext.none];
@@ -4195,7 +4193,7 @@ class Parser {
       rewriter.insertParens(token, false);
     }
 
-    _contextStack.add(NewlineContext.parentheses);
+    _contextStack.add(NewlineContext.expression);
 
     Token begin = token.next;
     token = parseExpressionInParenthesis(token);
@@ -4209,7 +4207,7 @@ class Parser {
   Token parseParenthesizedExpression(Token token) {
     Token begin = token.next;
 
-    _contextStack.add(NewlineContext.parentheses);
+    _contextStack.add(NewlineContext.expression);
 
     token = parseExpressionInParenthesis(token);
     listener.handleParenthesizedExpression(begin);
@@ -4331,7 +4329,7 @@ class Parser {
   Token parseLiteralSetOrMapSuffix(final Token start, Token constKeyword) {
     if (!enableSetLiterals) {
 
-      _contextStack.add(NewlineContext.collection);
+      _contextStack.add(NewlineContext.expression);
 
       // TODO(danrubel): remove this once set literals are permanent
       var token = parseLiteralMapSuffix(start, constKeyword);
@@ -4349,7 +4347,7 @@ class Parser {
       return rightBrace;
     }
 
-    _contextStack.add(NewlineContext.collection);
+    _contextStack.add(NewlineContext.expression);
 
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
@@ -4831,6 +4829,8 @@ class Parser {
     var kind = next.kind;
     while (kind != EOF_TOKEN) {
       if (identical(kind, STRING_INTERPOLATION_TOKEN)) {
+        _contextStack.add(NewlineContext.expression);
+
         // Parsing ${expression}.
         token = parseExpression(next).next;
         if (!optional('}', token)) {
@@ -4839,6 +4839,8 @@ class Parser {
           token = next.endGroup;
         }
         listener.handleInterpolationExpression(next, token);
+
+        _contextStack.removeLast();
       } else if (identical(kind, STRING_INTERPOLATION_IDENTIFIER_TOKEN)) {
         // Parsing $identifier.
         token = parseIdentifierExpression(next);
@@ -4943,7 +4945,7 @@ class Parser {
     assert(optional('(', begin));
     listener.beginArguments(begin);
 
-    _contextStack.add(NewlineContext.parentheses);
+    _contextStack.add(NewlineContext.expression);
 
     int argumentCount = 0;
     bool hasSeenNamedArgument = false;
