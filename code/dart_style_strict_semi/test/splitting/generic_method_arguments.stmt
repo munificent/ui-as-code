@@ -57,10 +57,10 @@ lengthyMethodName<
     seventh,
     eighth);
 >>> in method chain
-receiver.method<First, Second, Third, Fourth, Fifth>(
-    first, second, third, fourth, fifth)
-.method<First, Second, Third, Fourth, Fifth>(
-    first, second, third, fourth, fifth);
+receiver.method<First, Second, Third, Fourth, Fifth>
+    (first, second, third, fourth, fifth)
+.method<First, Second, Third, Fourth, Fifth>
+    (first, second, third, fourth, fifth);
 <<<
 receiver
     .method<First, Second, Third,
