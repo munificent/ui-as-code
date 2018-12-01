@@ -2902,24 +2902,31 @@ class SourceVisitor extends ThrowingAstVisitor {
   bool writePrecedingCommentsAndNewlines(Token token) {
     var comment = token.precedingComments;
 
+    // DONE(semicolon): Don't get confused by the inserted semicolon token when
+    // calculating lines between tokens.
+    var previous = token.previous;
+    while (previous.type == TokenType.SEMICOLON_IMPLICIT) {
+      previous = previous.previous;
+    }
+
     // For performance, avoid calculating newlines between tokens unless
     // actually needed.
     if (comment == null) {
       if (builder.needsToPreserveNewlines) {
-        builder.preserveNewlines(_startLine(token) - _endLine(token.previous));
+        builder.preserveNewlines(_startLine(token) - _endLine(previous));
       }
 
       return false;
     }
 
-    var previousLine = _endLine(token.previous);
+    var previousLine = _endLine(previous);
     var tokenLine = _startLine(token);
 
     // Edge case: The analyzer includes the "\n" in the script tag's lexeme,
     // which confuses some of these calculations. We don't want to allow a
     // blank line between the script tag and a following comment anyway, so
     // just override the script tag's line.
-    if (token.previous.type == TokenType.SCRIPT_TAG) previousLine = tokenLine;
+    if (previous.type == TokenType.SCRIPT_TAG) previousLine = tokenLine;
 
     var comments = <SourceComment>[];
     while (comment != null) {
@@ -2927,7 +2934,7 @@ class SourceVisitor extends ThrowingAstVisitor {
 
       // Don't preserve newlines at the top of the file.
       if (comment == token.precedingComments &&
-          token.previous.type == TokenType.EOF) {
+          previous.type == TokenType.EOF) {
         previousLine = commentLine;
       }
 
