@@ -19,6 +19,7 @@ import 'error_listener.dart';
 import 'exceptions.dart';
 import 'source_code.dart';
 import 'source_visitor.dart';
+
 // DONE(semicolon): Not checking strings since dartfmt adds semicolons.
 //import 'string_compare.dart' as string_compare;
 import 'style_fix.dart';
@@ -205,13 +206,14 @@ class DartFormatter {
     TokenType.PERIOD_PERIOD_PERIOD,
     TokenType.PLUS,
     TokenType.PLUS_EQ,
-    // TODO(semicolon): Would be fine to ignore now because it's only used by
-    // the conditional operator. But if we ever want to make a postfix "?"
+    // TODO(semicolon): Fine to ignore now because it's only used by the
+    // conditional operator. But if we ever want to make a postfix "?"
     // expression, this could be a problem.
-//  TokenType.QUESTION,
+    TokenType.QUESTION,
     TokenType.QUESTION_PERIOD,
     TokenType.QUESTION_QUESTION,
     TokenType.QUESTION_QUESTION_EQ,
+    TokenType.SCRIPT_TAG,
     TokenType.SEMICOLON,
     TokenType.SLASH,
     TokenType.SLASH_EQ,
@@ -223,6 +225,66 @@ class DartFormatter {
     TokenType.TILDE,
     TokenType.TILDE_SLASH,
     TokenType.TILDE_SLASH_EQ,
+
+    // Reserved words that always have something after them.
+    Keyword.ASSERT,
+    Keyword.CASE,
+    Keyword.CATCH,
+    Keyword.CLASS,
+    Keyword.CONST,
+    Keyword.DEFAULT,
+    Keyword.DO,
+    Keyword.ELSE,
+    Keyword.ENUM,
+    Keyword.EXTENDS,
+    Keyword.FINAL,
+    Keyword.FINALLY,
+    Keyword.FOR,
+    Keyword.IF,
+    Keyword.IN,
+    Keyword.IS,
+    Keyword.NEW,
+    Keyword.SUPER,
+    Keyword.SWITCH,
+    Keyword.THROW,
+    Keyword.TRY,
+    Keyword.VAR,
+    Keyword.WHILE,
+    Keyword.WITH,
+
+// Cannot ignore newlines around built-in identifiers and contextual keywords
+// because they may be used as identifiers in other contexts.
+// Keyword.ABSTRACT,
+// Keyword.AS,
+// Keyword.ASYNC,
+// Keyword.AWAIT,
+// Keyword.COVARIANT,
+// Keyword.DEFERRED,
+// Keyword.DYNAMIC,
+// Keyword.EXPORT,
+// Keyword.EXTERNAL,
+// Keyword.FACTORY,
+// Keyword.FUNCTION,
+// Keyword.GET,
+// Keyword.HIDE,
+// Keyword.IMPLEMENTS,
+// Keyword.IMPORT,
+// Keyword.INTERFACE,
+// Keyword.LIBRARY,
+// Keyword.MIXIN,
+// Keyword.NATIVE,
+// Keyword.OF,
+// Keyword.ON,
+// Keyword.OPERATOR,
+// Keyword.PART,
+// Keyword.PATCH,
+// Keyword.SET,
+// Keyword.SHOW,
+// Keyword.SOURCE,
+// Keyword.STATIC,
+// Keyword.SYNC,
+// Keyword.TYPEDEF,
+// Keyword.YIELD,
   ].toSet();
 
   /// If a newline occurs before any of these tokens, we don't treat it as a
@@ -248,7 +310,12 @@ class DartFormatter {
     TokenType.PERIOD,
     TokenType.PERIOD_PERIOD,
     TokenType.CLOSE_PAREN,
-    TokenType.CLOSE_SQUARE_BRACKET
+    TokenType.CLOSE_SQUARE_BRACKET,
+    // TODO(semicolon): For conditional operator. Will this interfere with
+    // using "?" in prefix position later?
+    TokenType.QUESTION,
+    // Mainly for constructor initialization lists and conditional operator.
+    TokenType.COLON
   ].toSet();
 
   void _insertSemicolons(LineInfo lineInfo, Token startToken) {
@@ -271,6 +338,20 @@ class DartFormatter {
       //
       //     foo(() { noNewLine() })
       if (token.type == TokenType.CLOSE_CURLY_BRACKET) continue;
+
+      // Ignore newlines between adjacent strings.
+      // TODO(semicolon): This is a little dubious because it's possible to have
+      // code like:
+      //
+      //     var a = "string"
+      //     "another".someMethod()
+      // Ideally, we'd get rid of adjacent strings entirely now that "+" exists,
+      // but that's a difficult change. :-/
+      // TODO(semicolon): Does this handle strings with interpolation in them?
+      if (token.previous.type == TokenType.STRING &&
+          token.type == TokenType.STRING) {
+        continue;
+      }
 
       var semicolon = Token(TokenType.SEMICOLON_IMPLICIT, token.previous.end);
 
