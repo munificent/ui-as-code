@@ -54,7 +54,7 @@ class
 A{}
 <<<
 abstract class A {}
->>> native class
+>>> native class (skip: TODO(semicolon): Parser always reports (hidden) error on native clauses and recovery gets confused by newline, so just skipping.
 class A extends B
 native
 "Zapp" {

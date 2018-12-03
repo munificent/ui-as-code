@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import '../../scanner/token.dart' show Token;
+import '../../scanner/token.dart' show Token, TokenType;
 import '../messages.dart' as fasta;
 import 'member_kind.dart' show MemberKind;
 import 'parser.dart' show Parser;
@@ -21,7 +21,12 @@ bool isModifier(Token token) {
     //   external Foo foo();
     // but is the identifier in this declaration
     //   external() => true;
-    if (!token.next.type.isKeyword && !token.next.isIdentifier) {
+    // DONE(semicolon): Ignore newline between potential modifier and
+    // identifier after it.
+    var next = token.next;
+    if (next.type == TokenType.SEMICOLON_IMPLICIT) next = next.next;
+
+    if (!next.type.isKeyword && !next.isIdentifier) {
       return false;
     }
   }

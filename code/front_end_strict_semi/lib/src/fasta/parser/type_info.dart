@@ -171,6 +171,7 @@ TypeInfo computeType(final Token token, bool required,
 
   if (optional('void', next)) {
     next = next.next;
+    // TODO(semicolon): Ignore newline before "Function" here? (And below.)
     if (isGeneralizedFunctionType(next)) {
       // `void` `Function` ...
       return new ComplexTypeInfo(token, noTypeParamOrArg)
@@ -244,6 +245,9 @@ TypeInfo computeType(final Token token, bool required,
     return noType;
   }
 
+  // DONE(semicolon): Ignore a newline between a type and name.
+  if (next.type == TokenType.SEMICOLON_IMPLICIT) next = next.next;
+
   assert(typeParamOrArg == noTypeParamOrArg);
   if (isGeneralizedFunctionType(next)) {
     // identifier `Function`
@@ -266,6 +270,9 @@ TypeInfo computeType(final Token token, bool required,
 /// given unbalanced `<` `>` and invalid parameters or arguments.
 TypeParamOrArgInfo computeTypeParamOrArg(Token token,
     [bool inDeclaration = false]) {
+  // DONE(semicolon): Ignore a newline before a type argument list.
+  if (token.next.type == TokenType.SEMICOLON_IMPLICIT) token = token.next;
+
   Token beginGroup = token.next;
   if (!optional('<', beginGroup)) {
     return noTypeParamOrArg;

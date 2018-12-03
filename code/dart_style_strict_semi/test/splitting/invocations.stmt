@@ -10,9 +10,8 @@ compiler
 compiler.something().something().some();
 <<<
 compiler.something().something().some();
->>> don't split before implicit receiver
-return
-     call({'type': type, 'id': id})
+>>> don't split before implicit receiver DONE(semicolon): Removed newline after "return".
+return call({'type': type, 'id': id})
     .then(deserializeAsset);
 <<<
 return call({'type': type, 'id': id})
@@ -181,22 +180,22 @@ someReceiverObject
     .property4
     .property5
     .property6;
->>> chained indexes
-someReceiverObject.property1.property2
+>>> chained indexes DONE(semicolon): Parenthesized since otherwise newline before "[" is significant.
+(someReceiverObject.property1.property2
             .property3[argument]
         [argument][argument]
     .property4
     .property5
-    .property6;
+    .property6);
 <<<
-someReceiverObject
+(someReceiverObject
     .property1
     .property2
     .property3[argument][argument]
         [argument]
     .property4
     .property5
-    .property6;
+    .property6);
 >>> index on method call
 someReceiverObject.property1.property2
         .method3()[0]

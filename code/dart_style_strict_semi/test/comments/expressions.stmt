@@ -60,15 +60,15 @@ foo &&
 1 /* a */ && 2 /* b */ && 3;
 <<<
 1 /* a */ && 2 /* b */ && 3;
->>> no trailing space after operand preceding comment
-a
+>>> no trailing space after operand preceding comment DONE(semicolon): Parenthesize since we don't allow newline before "&&".
+(a
   // comment
-  && b;
+  && b);
 <<<
-a
+(a
     // comment
     &&
-    b;
+    b);
 >>> hard line caused by a comment before a nested line
 someFunction(//
 someExtremelyLongArgumentName).clamp();

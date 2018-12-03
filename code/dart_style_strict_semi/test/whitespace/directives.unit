@@ -62,3 +62,8 @@ export 'a' if (b.c == 'd') 'e';
 part   of'uri.dart'     ;
 <<<
 part of 'uri.dart';
+>>> ignore newline after "import"
+import
+'foo.dart';
+<<<
+import 'foo.dart';

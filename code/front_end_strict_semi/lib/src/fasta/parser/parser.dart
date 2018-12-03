@@ -287,8 +287,8 @@ class Parser {
 
   /// Advance [token] if the next one is an implicit inserted semicolon.
   ///
-  /// You can think of it roughly like the equivalent of "empty statement (";"),
-  /// but for thinks like class bodies.
+  /// Ignores inserted semicolons in places where we know they aren't
+  /// meaningful.
   ///
   /// The fact that it looks at the *next* token instead of [token] is
   /// confusing, but it's because fasta often has [token] sitting at the end of
@@ -298,10 +298,29 @@ class Parser {
     return token;
   }
 
+  /// Advance [token] if the next one is an implicit inserted semicolon.
+  ///
+  /// Ignores inserted semicolons in places where we know they aren't
+  /// meaningful.
+  Token _ignoreImplicitSemicolon(Token token) {
+    if (token.type == TokenType.SEMICOLON_IMPLICIT) return token.next;
+    return token;
+  }
+
   /// Determines whether the current token is an explicit or implicit semicolon.
   bool _isSemicolon(Token token) =>
       token.type == TokenType.SEMICOLON ||
           token.type == TokenType.SEMICOLON_IMPLICIT;
+
+  /// Turn [token] into an explicit semicolon token if it's an implicit one.
+  ///
+  /// This is just to make AstBuilder not assert when it receives an implicit
+  /// semicolon and checks that it's a real one.
+  Token _makeSemicolon(Token token) {
+    if (token.type == TokenType.SEMICOLON) return token;
+    assert(token.type == TokenType.SEMICOLON_IMPLICIT);
+    return new Token(TokenType.SEMICOLON, token.offset);
+  }
 
 //  /// Determines whether the current token is a terminator.
 //  ///
@@ -563,6 +582,9 @@ class Parser {
     next = token.next;
     if (next.isTopLevelKeyword) {
       return parseTopLevelKeywordDeclaration(start, next, directiveState);
+    } else if (next.type == TokenType.SEMICOLON_IMPLICIT && next.next.isTopLevelKeyword) {
+      // DONE(semicolon): Allow a newline between "abstract" and "class".
+      return parseTopLevelKeywordDeclaration(start, next.next, directiveState);
     } else if (next.isKeywordOrIdentifier) {
       // TODO(danrubel): improve parseTopLevelMember
       // so that we don't parse modifiers twice.
@@ -615,7 +637,10 @@ class Parser {
     Token modifier = start.next;
     while (modifier != keyword) {
       // Recovery
-      reportTopLevelModifierError(modifier, keyword);
+      // DONE(semicolon): Ignore newlines between modifiers and keyword.
+      if (modifier.type != TokenType.SEMICOLON_IMPLICIT) {
+        reportTopLevelModifierError(modifier, keyword);
+      }
       modifier = modifier.next;
     }
   }
@@ -715,9 +740,22 @@ class Parser {
   /// ```
   Token parseImportPrefixOpt(Token token) {
     Token next = token.next;
+
+    // DONE(semicolon): Ignore a newline before "deferred" or "as".
+    next = _ignoreImplicitSemicolon(next);
+
     if (optional('deferred', next) && optional('as', next.next)) {
       Token deferredToken = next;
       Token asKeyword = next.next;
+      token = ensureIdentifier(
+          asKeyword, IdentifierContext.importPrefixDeclaration);
+      listener.handleImportPrefix(deferredToken, asKeyword);
+    } else if (optional('deferred', next) &&
+        next.next.type == TokenType.SEMICOLON_IMPLICIT &&
+        optional('as', next.next.next)) {
+      // DONE(semicolon): Allow newline between "deferred" and "as".
+      Token deferredToken = next;
+      Token asKeyword = next.next.next;
       token = ensureIdentifier(
           asKeyword, IdentifierContext.importPrefixDeclaration);
       listener.handleImportPrefix(deferredToken, asKeyword);
@@ -739,13 +777,17 @@ class Parser {
   Token parseImport(Token importKeyword) {
     assert(optional('import', importKeyword));
     listener.beginImport(importKeyword);
-    Token token = ensureLiteralString(importKeyword);
+
+    // DONE(semicolon): Ignore newline after "import".
+    var token = _ignoreImplicitSemicolonNext(importKeyword);
+    token = ensureLiteralString(token);
     Token uri = token;
+    // TODO(semicolon): Do we need to explicitly ignore a newline before "if"?
     token = parseConditionalUriStar(token);
     token = parseImportPrefixOpt(token);
     token = parseCombinatorStar(token).next;
     if (_isSemicolon(token)) {
-      listener.endImport(importKeyword, token);
+      listener.endImport(importKeyword, _makeSemicolon(token));
       return token;
     } else {
       // Recovery
@@ -2167,6 +2209,12 @@ class Parser {
       if (optional('external', next)) {
         externalToken = token = next;
         next = token.next;
+
+        // DONE(semicolon): Ignore newline after "external".
+        if (next.type == TokenType.SEMICOLON_IMPLICIT) {
+          token = token.next;
+          next = next.next;
+        }
       }
       if (isModifier(next)) {
         if (optional('final', next)) {
@@ -2202,9 +2250,13 @@ class Parser {
     }
 
     Token beforeType = token;
+
     TypeInfo typeInfo = computeType(token, false, true);
     token = typeInfo.skipType(token);
     next = token.next;
+
+    // DONE(semicolon): Ignore a newline between a type and a declaration.
+    next = _ignoreImplicitSemicolon(next);
 
     Token getOrSet;
     String value = next.stringValue;
@@ -2288,7 +2340,7 @@ class Parser {
         }
       }
       return parseTopLevelMethod(beforeStart, externalToken, beforeType,
-          typeInfo, getOrSet, token.next);
+          typeInfo, getOrSet, next.previous);
     }
 
     if (getOrSet != null) {
@@ -2359,6 +2411,10 @@ class Parser {
     listener.beginTopLevelMethod(beforeStart, externalToken);
 
     Token token = typeInfo.parseType(beforeType, this);
+
+    // DONE(semicolon): Ignore newline between type and name.
+    token = _ignoreImplicitSemicolonNext(token);
+
     assert(token.next == (getOrSet ?? name));
     name = ensureIdentifier(
         getOrSet ?? token, IdentifierContext.topLevelFunctionDeclaration);

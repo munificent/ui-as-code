@@ -315,7 +315,10 @@ class DartFormatter {
     // using "?" in prefix position later?
     TokenType.QUESTION,
     // Mainly for constructor initialization lists and conditional operator.
-    TokenType.COLON
+    TokenType.COLON,
+
+    // Dartfmt wraps before `=`.
+    TokenType.EQ,
   ].toSet();
 
   void _insertSemicolons(LineInfo lineInfo, Token startToken) {

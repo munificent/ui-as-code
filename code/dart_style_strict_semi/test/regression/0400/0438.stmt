@@ -1,6 +1,6 @@
->>>
-final JsFunction _setDartInstance = context['Polymer']['PolymerInterop']
-    ['setDartInstance'];
+>>> DONE(semicolon): Parenthesize since otherwise the newline is significant.
+final JsFunction _setDartInstance = (context['Polymer']['PolymerInterop']
+    ['setDartInstance']);
 <<<
 final JsFunction _setDartInstance =
-    context['Polymer']['PolymerInterop']['setDartInstance'];
+    (context['Polymer']['PolymerInterop']['setDartInstance']);
