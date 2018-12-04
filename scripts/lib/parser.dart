@@ -27,16 +27,16 @@ Token tokenizeString(String source) {
 void forEachDartFile(String path,
     {bool includeTests,
     bool includeLanguageTests,
+    bool includeProtobufs,
     Function(File file, String relative) callback}) {
   includeTests ??= true;
   includeLanguageTests ??= false;
+  includeProtobufs ??= false;
 
   if (new File(path).existsSync()) {
     callback(new File(path), p.relative(path, from: path));
     return;
   }
-
-  var lastDir = "";
 
   for (var entry in new Directory(path).listSync(recursive: true)) {
     if (!entry.path.endsWith(".dart")) continue;
@@ -67,6 +67,12 @@ void forEachDartFile(String path,
     if (entry.path.contains("sdk/third_party/pkg_tested/")) continue;
     if (entry.path.contains("/.dart_tool/")) continue;
 
+    // Don't care about generated protobuf code.
+    if (!includeProtobufs) {
+      if (entry.path.endsWith(".pb.dart")) continue;
+      if (entry.path.endsWith(".pbenum.dart")) continue;
+    }
+
     var relative = p.relative(entry.path, from: path);
 //    if (p.dirname(relative) != lastDir) {
 //      print(relative);
@@ -80,10 +86,12 @@ void forEachDartFile(String path,
 void parsePath(String path,
     {bool includeTests,
     bool includeLanguageTests,
+    bool includeProtobufs,
     Visitor Function(String) createVisitor}) {
   forEachDartFile(path,
       includeTests: includeTests,
-      includeLanguageTests: includeLanguageTests, callback: (file, relative) {
+      includeLanguageTests: includeLanguageTests,
+      includeProtobufs: includeProtobufs, callback: (file, relative) {
     _parseFile(file, relative, createVisitor);
   });
 }
@@ -114,6 +122,7 @@ void _parseFile(
 /// A simple [AnalysisErrorListener] that just collects the reported errors.
 class ErrorListener implements AnalysisErrorListener {
   bool _hadError = false;
+
   bool get hadError => _hadError;
 
   void onError(AnalysisError error) {
