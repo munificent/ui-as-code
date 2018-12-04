@@ -2905,7 +2905,7 @@ class SourceVisitor extends ThrowingAstVisitor {
     // DONE(semicolon): Don't get confused by the inserted semicolon token when
     // calculating lines between tokens.
     var previous = token.previous;
-    while (previous.type == TokenType.SEMICOLON_IMPLICIT) {
+    while (previous != null && previous.type == TokenType.SEMICOLON_IMPLICIT) {
       previous = previous.previous;
     }
 

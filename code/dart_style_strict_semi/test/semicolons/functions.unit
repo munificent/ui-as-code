@@ -46,17 +46,14 @@ main() {
   async;
   {}
 }
->>> newline between "async" and "{" is not significant
+>>> newline between "async" and "{" is significant
 main() {
 var a = "a"
 var f = (a) async
 {}
 }
 <<<
-main() {
-  var a = "a";
-  var f = (a) async {};
-}
+parse error
 >>> arrow bodies
 main() {
 var a = "a"
@@ -109,24 +106,20 @@ main() {
   var a = "a";
   var f = (a) async => 1;
 }
->>> newline between ")" and "{" is not significant at top level
+>>> newline between ")" and "{" is significant at top level
 var a = "a"
 var f = (a)
 {}
 <<<
-var a = "a";
-var f = (a) {};
->>> newline between ")" and "{" is not significant in class
+parse error
+>>> newline between ")" and "{" is is significant in class
 class Foo {
 var a = "a"
 var f = (a)
 {}
 }
 <<<
-class Foo {
-  var a = "a";
-  var f = (a) {};
-}
+parse error
 >>> newline between ")" and "=>" is not significant at top level
 var a = "a"
 var f = (a)

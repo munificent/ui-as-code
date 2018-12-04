@@ -13,23 +13,19 @@ main() sync* { yield 123 }
 main() sync* {
   yield 123;
 }
->>> TODO: Make this an error to be consistent with "return"?
+>>> DONE(semicolon): Make this an error to be consistent with "return".
 main() sync* {
   yield
     123
 }
 <<<
-main() sync* {
-  yield 123;
-}
+parse error
 >>>
 main() sync* {
   yield
       123 }
 <<<
-main() sync* {
-  yield 123;
-}
+parse error
 >>>
 main() sync* {
   yield* 123
@@ -50,14 +46,10 @@ main() sync* {
     123
 }
 <<<
-main() sync* {
-  yield* 123;
-}
+parse error
 >>>
 main() sync* {
   yield*
       123 }
 <<<
-main() sync* {
-  yield* 123;
-}
+parse error

@@ -3,11 +3,11 @@
 a + b
 <<<
 a + b;
->>>
-a
-+ b
+>>> newline is significant here so have to paren
+(a
++ b)
 <<<
-a + b;
+(a + b);
 >>>
 a +
 b

@@ -20,23 +20,35 @@ main() {
   -c;
 }
 >>> top-level variable
+var a = (b
++c)
+<<<
+var a = (b + c);
+>>> top-level variable
 var a = b
 +c
 <<<
-var a = b + c;
+parse error
 >>> local variable
 main() {
   var a = b
   - c
-  var d = e
-  +f
+  var d = (e
+  +f)
 }
 <<<
 main() {
   var a = b;
   -c;
-  var d = e + f;
+  var d = (e + f);
 }
+>>> local variable
+main() {
+  var d = e
+  +f
+}
+<<<
+parse error
 >>> old-style typedef
 typedef void Foo<T>(T t)
 <<<
@@ -45,7 +57,7 @@ typedef void Foo<T>(T t);
 typedef Foo = void Function(int)
 <<<
 typedef Foo = void Function(int);
->>>
+>>> (skip: TODO(semicolon): How should we handle this?)
 typedef Foo = void Function(int)
 Function(int)
 <<<
@@ -55,9 +67,7 @@ typedef Foo = void Function(int)
 class Foo { var field = 1
 + 2}
 <<<
-class Foo {
-  var field = 1 + 2;
-}
+parse error
 >>> empty constructor
 class Foo { Foo() : super() }
 <<<
@@ -87,8 +97,7 @@ main() {
 }
 <<<
 main() {
-  Type;
-  variable;
+  Type variable;
 }
 >>> redirecting factory constructor
 class Foo {

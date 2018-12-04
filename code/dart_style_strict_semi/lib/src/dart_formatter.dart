@@ -145,6 +145,8 @@ class DartFormatter {
       }
     }
 
+    _removeImplicitSemicolons(startToken);
+
     errorListener.throwIfErrors();
 
     // Format it.
@@ -319,6 +321,19 @@ class DartFormatter {
 
     // Dartfmt wraps before `=`.
     TokenType.EQ,
+
+    // An expression can't start with `=>` today. Even if we later support it
+    // for lambdas with no parameter lists, it's not useful to use one as a
+    // statement expression, so ignore the newline before it.
+    TokenType.FUNCTION,
+
+    // Some people do like putting commas at the beginning of the line, and it's
+    // unlikely we'll ever make comma prefix operator.
+    TokenType.COMMA,
+
+    // Idiomatic style puts these on the next line.
+    Keyword.AS,
+    Keyword.IS,
   ].toSet();
 
   void _insertSemicolons(LineInfo lineInfo, Token startToken) {
@@ -364,6 +379,31 @@ class DartFormatter {
 
       previous.next = semicolon;
       token.previous = semicolon;
+    }
+  }
+
+  /// After the token stream has been parsed, we no longer need any remaining
+  /// implicit semicolons.
+  ///
+  /// These only matter because in a couple of places, dartfmt uses the token
+  /// stream directly instead of pulling tokens from the AST node (which will
+  /// already not be using any implicit semicolons).
+  ///
+  /// In particular, when outputting commas after nodes, dartfmt uses
+  /// `Token.next` to find them. This makes that work correctly.
+  void _removeImplicitSemicolons(Token startToken) {
+    for (var token = startToken; !token.isEof; token = token.next) {
+      if (token.type == TokenType.SEMICOLON_IMPLICIT) {
+        var previous = token.previous;
+
+        token.previous.next = token.next;
+        token.next.previous = token.previous;
+
+        token.next = null;
+        token.previous = null;
+
+        token = previous;
+      }
     }
   }
 }

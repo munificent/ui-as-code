@@ -1,7 +1,6 @@
 40 columns                              |
 >>> based on elements-1.0.4/lib/src/checklist_element.dart
-main()
-{
+main() {
   try
   {
     body();

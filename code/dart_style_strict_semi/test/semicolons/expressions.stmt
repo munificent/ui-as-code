@@ -17,7 +17,7 @@ main() {
 main() async => await future
 <<<
 main() async => await future;
->>>
+>>> (skip: TODO(semicolon): Do we want to ignore newlines after "await"?)
 main() async => await
 future
 <<<
@@ -137,5 +137,6 @@ a is b;
   buffer
     ..writeln('typedef struct {')
     ..indent();
-  (type as Struct).fields.forEach((f) => f.generate(buffer));
+  (type as Struct).fields.forEach(
+      (f) => f.generate(buffer));
 }
