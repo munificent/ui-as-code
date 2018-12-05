@@ -3798,6 +3798,10 @@ class Parser {
     Token begin = token = token.next;
     assert(optional('yield', token));
     listener.beginYieldStatement(begin);
+
+    // DONE(semicolon): Ignore newline after "yield".
+    token = _ignoreImplicitSemicolonNext(token);
+
     Token starToken;
     if (optional('*', token.next)) {
       starToken = token = token.next;

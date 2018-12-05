@@ -45,16 +45,13 @@ var names = [];
   property.access;
   function();
 }
->>>
+>>> DONE(semicolon): Don't allow identifier on its own line.
 {
   identifier
   function()
 }
 <<<
-{
-  identifier;
-  function();
-}
+parse error
 >>>
 {
   function()
