@@ -87,8 +87,7 @@ main() {
 }
 <<<
 main() {
-  prefixed.Type;
-  variable;
+  prefixed.Type variable;
 }
 >>>
 main() {
@@ -247,3 +246,81 @@ abstract class JsToElementMap {
       getNativeBehaviorForJsCall(
           ir.StaticInvocation node);
 }
+>>> ignore newline after type
+class Palette {
+  final int
+      threshold; // titles for indices > threshold are white, otherwise black
+
+  bool get isValid => name != null;
+}
+<<<
+class Palette {
+  final int
+      threshold; // titles for indices > threshold are white, otherwise black
+
+  bool get isValid => name != null;
+}
+>>> ignore newline before "extends"
+class C
+    extends B {}
+<<<
+class C extends B {}
+>>> ignore newline before "implements"
+class C
+    implements B {}
+<<<
+class C implements B {}
+>>> ignore newline before "with"
+class C
+    with B {}
+<<<
+class C with B {}
+>>> ignore newline before "on"
+mixin M
+  on S {}
+<<<
+mixin M on S {}
+>>> ignore newline before "with" in mixin application
+class C = S
+  with M
+<<<
+class C = S with M;
+>>> ignore newline after "extends"
+class C extends
+  S {}
+<<<
+class C extends S {}
+>>> ignore newline after "implements"
+class C implements
+  S {}
+<<<
+class C implements S {}
+>>> ignore newline after "with"
+class C with
+  S {}
+<<<
+class C with S {}
+>>> ignore newline after "with" in mixin application
+class C = S with
+  M;
+<<<
+class C = S with M;
+>>> ignore newline after "on"
+mixin M on
+  S {}
+<<<
+mixin M on S {}
+>>> newline between return type and method
+class Foo {
+  ReturnType
+  method() => null
+}
+
+ReturnType
+function() => null
+<<<
+class Foo {
+  ReturnType method() => null;
+}
+
+ReturnType function() => null;

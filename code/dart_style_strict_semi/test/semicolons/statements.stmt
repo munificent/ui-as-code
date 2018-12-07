@@ -32,3 +32,27 @@ main() {
           path.toLowerCase().endsWith(
               "${extension.toLowerCase()}"));
 }
+>>> ignore newline after switch body
+{
+  switch (field) {
+    case Field.DOGS:
+      return 'Dogs';
+    case Field.CATS:
+      return 'Cats';
+    case Field.FISH:
+      return 'Fish';
+  }
+  return null;
+}
+<<<
+{
+  switch (field) {
+    case Field.DOGS:
+      return 'Dogs';
+    case Field.CATS:
+      return 'Cats';
+    case Field.FISH:
+      return 'Fish';
+  }
+  return null;
+}

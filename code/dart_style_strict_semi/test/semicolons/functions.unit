@@ -46,14 +46,63 @@ main() {
   async;
   {}
 }
->>> newline between "async" and "{" is significant
+>>> newline between "async" and "{" is not significant
 main() {
 var a = "a"
 var f = (a) async
 {}
 }
 <<<
-parse error
+main() {
+  var a = "a";
+  var f = (a) async {};
+}
+>>> newline between ")" and "sync*" is significant
+main() {
+var a = "a"
+var f = (a)
+sync* {}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a);
+  sync * {};
+}
+>>> newline between "sync*" and "{" is not significant
+main() {
+var a = "a"
+var f = (a) sync*
+{}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a) sync* {};
+}
+>>> newline between ")" and "async*" is significant
+main() {
+var a = "a"
+var f = (a)
+async*{}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a);
+  async * {};
+}
+>>> newline between "async*" and "{" is not significant
+main() {
+var a = "a"
+var f = (a) async*
+{}
+}
+<<<
+main() {
+  var a = "a";
+  var f = (a) async* {};
+}
 >>> arrow bodies
 main() {
 var a = "a"
@@ -137,4 +186,52 @@ var f = (a)
 class Foo {
   var a = "a";
   var f = (a) => 1;
+}
+>>> ignore newlines anywhere in parameter list
+f(
+int
+a
+,
+{
+int
+b
+=
+c
++
+d
+,
+}
+) {
+}
+<<<
+f(
+  int a, {
+  int b = c + d,
+}) {}
+>>> regression for newline in param
+  double _getIntrinsicSize(
+      {Axis sizingDirection,
+      double
+          extent, // the extent in the direction that isn't the sizing direction
+      _ChildSizingFunction
+          childSize // a method to find the size in the sizing direction
+      }) {
+  }
+<<<
+double _getIntrinsicSize(
+    {Axis sizingDirection,
+    double
+        extent, // the extent in the direction that isn't the sizing direction
+    _ChildSizingFunction
+        childSize // a method to find the size in the sizing direction
+    }) {}
+>>>
+class VariableUse {
+  final ir.TreeNode /*ir.FunctionDeclaration|ir.FunctionExpression*/
+      localFunction;
+}
+<<<
+class VariableUse {
+  final ir.TreeNode /*ir.FunctionDeclaration|ir.FunctionExpression*/
+      localFunction;
 }

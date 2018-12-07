@@ -106,9 +106,11 @@ import 'util.dart'
 // DONE(semicolon): Tracks the surrounding nesting that enables or disables
 // significant newlines.
 enum NewlineContext {
-  none,
-  expression,
-  block
+  // Newlines can be significant in this context.
+  significant,
+
+  // Newlines can never be signifnicant in this context.
+  ignored
 }
 
 /// An event generating parser of Dart programs. This parser expects all tokens
@@ -280,10 +282,10 @@ class Parser {
       _current != null && _current._ignoreNewlines;
 
   bool get _ignoreNewlines {
-    return _contextStack.last == NewlineContext.expression;
+    return _contextStack.last == NewlineContext.ignored;
   }
 
-  final List<NewlineContext> _contextStack = [NewlineContext.none];
+  final List<NewlineContext> _contextStack = [NewlineContext.significant];
 
   /// Advance [token] if the next one is an implicit inserted semicolon.
   ///
@@ -1275,6 +1277,9 @@ class Parser {
   /// Parse a mixin application starting from `with`. Assumes that the first
   /// type has already been parsed.
   Token parseMixinApplicationRest(Token token) {
+    // DONE(semicolon): Ignore a newline before "with".
+    token = _ignoreImplicitSemicolonNext(token);
+
     Token withKeyword = token.next;
     if (!optional('with', withKeyword)) {
       // Recovery: Report an error and insert synthetic `with` clause.
@@ -1293,6 +1298,9 @@ class Parser {
   }
 
   Token parseWithClauseOpt(Token token) {
+    // DONE(semicolon): Ignore a newline before "extends".
+    token = _ignoreImplicitSemicolonNext(token);
+
     Token withKeyword = token.next;
     if (optional('with', withKeyword)) {
       token = parseTypeList(withKeyword);
@@ -1347,6 +1355,9 @@ class Parser {
     assert(optional('(', token));
     listener.beginFormalParameters(begin, kind);
     int parameterCount = 0;
+
+    _contextStack.add(NewlineContext.ignored);
+
     while (true) {
       Token next = token.next;
       if (optional(')', next)) {
@@ -1400,6 +1411,9 @@ class Parser {
     }
     assert(optional(')', token));
     listener.endFormalParameters(parameterCount, begin, token, kind);
+
+    _contextStack.removeLast();
+
     return token;
   }
 
@@ -1834,6 +1848,10 @@ class Parser {
     }
     assert(optional('}', token));
     listener.endEnum(enumKeyword, leftBrace, count);
+
+    // DONE(semicolon): Ignore newline after "}".
+    token = _ignoreImplicitSemicolonNext(token);
+
     return token;
   }
 
@@ -2002,6 +2020,9 @@ class Parser {
   }
 
   Token parseClassExtendsOpt(Token token) {
+    // DONE(semicolon): Ignore a newline before "extends".
+    token = _ignoreImplicitSemicolonNext(token);
+
     Token next = token.next;
     if (optional('extends', next)) {
       Token extendsKeyword = next;
@@ -2024,10 +2045,17 @@ class Parser {
   /// ;
   /// ```
   Token parseClassOrMixinImplementsOpt(Token token) {
+    // DONE(semicolon): Ignore a newline before "implements".
+    token = _ignoreImplicitSemicolonNext(token);
+
     Token implementsKeyword;
     int interfacesCount = 0;
     if (optional('implements', token.next)) {
       implementsKeyword = token.next;
+
+      // DONE(semicolon): Ignore a newline after "implements".
+      token = _ignoreImplicitSemicolonNext(token.next).previous;
+
       do {
         token =
             computeType(token.next, true).ensureTypeNotVoid(token.next, this);
@@ -2149,6 +2177,9 @@ class Parser {
   /// ;
   /// ```
   Token parseMixinOnOpt(Token token) {
+    // DONE(semicolon): Ignore a newline before "on".
+    token = _ignoreImplicitSemicolonNext(token);
+
     if (!optional('on', token.next)) {
       listener.handleMixinOn(null, 0);
       return token;
@@ -2162,6 +2193,10 @@ class Parser {
     assert(optional('on', onKeyword) ||
         optional('extends', onKeyword) ||
         onKeyword.lexeme == 'extend');
+
+    // DONE(semicolon): Ignore a newline after "on".
+    token = _ignoreImplicitSemicolonNext(token.next).previous;
+
     int typeCount = 0;
     do {
       token = computeType(token.next, true).ensureTypeNotVoid(token.next, this);
@@ -2426,6 +2461,10 @@ class Parser {
     }
 
     Token token = typeInfo.parseType(beforeType, this);
+
+    // DONE(semicolon): Ignore a newline between the type and name.
+    token = _ignoreImplicitSemicolonNext(token);
+
     assert(token.next == name);
 
     IdentifierContext context = isTopLevel
@@ -3002,6 +3041,10 @@ class Parser {
       typeInfo = computeType(token, false, true);
     }
     token = typeInfo.skipType(token);
+
+    // DONE(semicolon): Ignore newlines between the type and name.
+    token = _ignoreImplicitSemicolonNext(token);
+
     next = token.next;
 
     Token getOrSet;
@@ -3189,6 +3232,10 @@ class Parser {
         varFinalOrConst, getOrSet, name);
 
     Token token = typeInfo.parseType(beforeType, this);
+
+    // DONE(semicolon): Ignore newline between type and name.
+    token = _ignoreImplicitSemicolonNext(token);
+
     assert(token.next == (getOrSet ?? name));
     token = getOrSet ?? token;
 
@@ -3596,7 +3643,7 @@ class Parser {
     listener.beginBlockFunctionBody(begin);
     token = next;
 
-    _contextStack.add(NewlineContext.block);
+    _contextStack.add(NewlineContext.significant);
 
     while (notEofOrValue('}', token.next)) {
       Token startToken = token.next;
@@ -3670,6 +3717,10 @@ class Parser {
     Token next = token.next;
     if (optional('async', next)) {
       async = token = next;
+
+      // DONE(semicolon): Ignore newline after "async".
+      token = _ignoreImplicitSemicolonNext(token);
+
       next = token.next;
       if (optional('*', next)) {
         asyncState = AsyncModifier.AsyncStar;
@@ -3693,6 +3744,7 @@ class Parser {
     if (!inPlainSync && optional(';', token.next)) {
       reportRecoverableError(token.next, fasta.messageAbstractNotSync);
     }
+
     return token;
   }
 
@@ -4151,7 +4203,7 @@ class Parser {
         bool old = mayParseFunctionExpressions;
         mayParseFunctionExpressions = true;
 
-        _contextStack.add(NewlineContext.expression);
+        _contextStack.add(NewlineContext.ignored);
 
         token = parseExpression(next);
         next = token.next;
@@ -4321,7 +4373,7 @@ class Parser {
       rewriter.insertParens(token, false);
     }
 
-    _contextStack.add(NewlineContext.expression);
+    _contextStack.add(NewlineContext.ignored);
 
     Token begin = token.next;
     token = parseExpressionInParenthesis(token);
@@ -4335,7 +4387,7 @@ class Parser {
   Token parseParenthesizedExpression(Token token) {
     Token begin = token.next;
 
-    _contextStack.add(NewlineContext.expression);
+    _contextStack.add(NewlineContext.ignored);
 
     token = parseExpressionInParenthesis(token);
     listener.handleParenthesizedExpression(begin);
@@ -4410,7 +4462,7 @@ class Parser {
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
 
-    _contextStack.add(NewlineContext.expression);
+    _contextStack.add(NewlineContext.ignored);
 
     while (true) {
       Token next = token.next;
@@ -4463,7 +4515,7 @@ class Parser {
   Token parseLiteralSetOrMapSuffix(final Token start, Token constKeyword) {
     if (!enableSetLiterals) {
 
-      _contextStack.add(NewlineContext.expression);
+      _contextStack.add(NewlineContext.ignored);
 
       // TODO(danrubel): remove this once set literals are permanent
       var token = parseLiteralMapSuffix(start, constKeyword);
@@ -4481,7 +4533,7 @@ class Parser {
       return rightBrace;
     }
 
-    _contextStack.add(NewlineContext.expression);
+    _contextStack.add(NewlineContext.ignored);
 
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
@@ -4963,7 +5015,7 @@ class Parser {
     var kind = next.kind;
     while (kind != EOF_TOKEN) {
       if (identical(kind, STRING_INTERPOLATION_TOKEN)) {
-        _contextStack.add(NewlineContext.expression);
+        _contextStack.add(NewlineContext.ignored);
 
         // Parsing ${expression}.
         token = parseExpression(next).next;
@@ -5079,7 +5131,7 @@ class Parser {
     assert(optional('(', begin));
     listener.beginArguments(begin);
 
-    _contextStack.add(NewlineContext.expression);
+    _contextStack.add(NewlineContext.ignored);
 
     int argumentCount = 0;
     bool hasSeenNamedArgument = false;
@@ -5531,7 +5583,9 @@ class Parser {
     }
 
     Token next = token.next;
-    if (!optional('in', next)) {
+    // DONE(semicolon): Handle newline before "in".
+    if (!optional('in', next) &&
+        !(next.type == TokenType.SEMICOLON_IMPLICIT && optional('in', next.next))) {
       if (optional(':', next)) {
         // Recovery
         reportRecoverableError(next, fasta.messageColonInPlaceOfIn);
@@ -5633,12 +5687,19 @@ class Parser {
   /// ```
   Token parseForInRest(
       Token token, Token awaitToken, Token forKeyword, Token leftParenthesis) {
+    // DONE(semicolon): Ignore newline before "in".
+    token = _ignoreImplicitSemicolonNext(token);
+
     Token inKeyword = token.next;
     assert(optional('in', inKeyword) || optional(':', inKeyword));
     listener.beginForInExpression(inKeyword.next);
     token = parseExpression(inKeyword);
     token = ensureCloseParen(token, leftParenthesis);
     listener.endForInExpression(token);
+
+    // DONE(semicolon): Ignore implicit newline after ")".
+    token = _ignoreImplicitSemicolonNext(token);
+
     listener.beginForInBody(token.next);
     LoopState savedLoopState = loopState;
     loopState = LoopState.InsideLoop;
@@ -6049,6 +6110,10 @@ class Parser {
     token = token.next;
     listener.endSwitchBlock(caseCount, beginSwitch, token);
     assert(optional('}', token));
+
+    // DONE(semicolon): Ignore implicit semicolon after "}".
+    token = _ignoreImplicitSemicolonNext(token);
+
     return token;
   }
 
@@ -6143,7 +6208,7 @@ class Parser {
     bool old = mayParseFunctionExpressions;
     mayParseFunctionExpressions = true;
 
-    _contextStack.add(NewlineContext.expression);
+    _contextStack.add(NewlineContext.ignored);
 
     token = parseExpression(token);
     if (optional(',', token.next)) {

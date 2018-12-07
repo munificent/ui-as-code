@@ -145,7 +145,13 @@ class DartFormatter {
       }
     }
 
-    _removeImplicitSemicolons(startToken);
+    // DONE(semicolon): If optional semicolons are enabled, run the lexical
+    // rules to insert implicit semicolons before parsing. Doing this here is
+    // hacky, but it saves us from having to fork analyzer too for the
+    // prototype.
+    if (fasta.Parser.optionalSemicolons) {
+      _removeImplicitSemicolons(startToken);
+    }
 
     errorListener.throwIfErrors();
 
@@ -316,6 +322,7 @@ class DartFormatter {
     // TODO(semicolon): For conditional operator. Will this interfere with
     // using "?" in prefix position later?
     TokenType.QUESTION,
+    TokenType.QUESTION_PERIOD,
     // Mainly for constructor initialization lists and conditional operator.
     TokenType.COLON,
 
@@ -334,6 +341,19 @@ class DartFormatter {
     // Idiomatic style puts these on the next line.
     Keyword.AS,
     Keyword.IS,
+
+    // TODO(semicolon): Ideally we wouldn't ignore newlines before these to be
+    // consistent with other operators. But the style in the Flutter repo is
+    // to put these at the beginning of the line and *also* there are a decent
+    // number of cases where there is a line comment by the operator, so
+    // dartfmt isn't able to fix the code.
+    //
+    // Ignore newlines here for now to minimize spurious diffs, but we should
+    // decide how we want to handle this. In practice, `&&` and `||` are
+    // unlikely to ever be prefix operators, so ignoring this may be the right
+    // approach.
+    TokenType.AMPERSAND_AMPERSAND,
+    TokenType.BAR_BAR,
   ].toSet();
 
   void _insertSemicolons(LineInfo lineInfo, Token startToken) {

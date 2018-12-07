@@ -222,6 +222,10 @@ TypeInfo computeType(final Token token, bool required,
       // We've seen identifier `.` identifier
       typeParamOrArg = computeTypeParamOrArg(next, inDeclaration);
       next = next.next;
+
+      // DONE(semicolon): Ignore a newline between a prefix.type and name.
+      if (next.type == TokenType.SEMICOLON_IMPLICIT) next = next.next;
+
       if (typeParamOrArg == noTypeParamOrArg &&
           !isGeneralizedFunctionType(next)) {
         if (required || looksLikeName(next)) {

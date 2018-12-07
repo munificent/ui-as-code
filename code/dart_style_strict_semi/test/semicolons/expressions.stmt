@@ -35,16 +35,13 @@ throw error;
 var names = []
 <<<
 var names = [];
->>>
+>>> DONE(semicolon): Don't allow prefixed identifier on its own line.
 {
   property.access
   function()
 }
 <<<
-{
-  property.access;
-  function();
-}
+parse error
 >>> DONE(semicolon): Don't allow identifier on its own line.
 {
   identifier
@@ -137,3 +134,8 @@ a is b;
   (type as Struct).fields.forEach(
       (f) => f.generate(buffer));
 }
+>>> null-aware on next line
+foo
+?.bar
+<<<
+foo?.bar;
