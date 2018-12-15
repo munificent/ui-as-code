@@ -1,0 +1,29 @@
+// Hanging return with comment after "return".
+// (Other hanging returns are already fixed because this is parsing the
+// baseline, not original output.)
+-packages/angular_components-0.10.0/lib/src/utils/angular/scroll_host/sticky_controller_impl.dart
+-sdk/pkg/compiler/lib/src/js_emitter/program_builder/field_visitor.dart
+
+// Dartfmt changes output on reformatting. Something to do with a block comment
+// in a parameter list.
++flutter/packages/flutter/test/material/dropdown_test.dart
++packages/dson_core-0.15.2/lib/src/deserializer.dart
++packages/over_react-1.27.0/lib/src/util/dom_util.dart
++packages/serializable_core-0.11.1/lib/serializable.dart
+
+// Linter tests have special comment markers which mess with the formatting in
+// breaking ways.
++packages/linter-0.1.69/test/_data/prefer_asserts_in_initializer_lists/lib.dart
++packages/linter-0.1.69/test/_data/public_member_api_docs/lib/a.dart
++packages/linter-0.1.69/test/rules/always_declare_return_types.dart
++packages/linter-0.1.69/test/rules/always_specify_types.dart
++packages/linter-0.1.69/test/rules/prefer_const_constructors_in_immutables.dart
++packages/linter-0.1.69/test/rules/prefer_const_declarations.dart
++packages/linter-0.1.69/test/rules/unnecessary_getters.dart
++packages/linter-0.1.69/test/rules/unnecessary_getters_setters.dart
++packages/linter-0.1.69/test/rules/unnecessary_statements.dart
+
+// Complains about const factory constructors in SDK.
++sdk/runtime/lib/bool_patch.dart
++sdk/runtime/lib/integers_patch.dart
++sdk/runtime/lib/string_patch.dart

@@ -44,7 +44,7 @@ stripped:
 # different way.
 baseline:
 	rm -rf baseline
-	dart ../../code/dart_style_semicolon/bin/format.dart -o baseline original
+	dart ../../code/dart_style_strict_semi/bin/format.dart -o baseline original
 
 # "baseline" -> "parse-baseline"
 #
@@ -58,7 +58,7 @@ baseline:
 # plays nicer with optional semicolons, but I'm not aware of examples of that.)
 parse-baseline:
 	rm -rf parse-baseline
-	dart ../../code/dart_style_semicolon/bin/format.dart --optional-semicolons \
+	dart ../../code/dart_style_strict_semi/bin/format.dart --optional-semicolons \
 			-o parse-baseline baseline
 
 # "original" -> "parse-original"
@@ -71,7 +71,7 @@ parse-baseline:
 # existing Dart code has a different interpretation under the new grammar.
 parse-original:
 	rm -rf parse-original
-	dart ../../code/dart_style_semicolon/bin/format.dart --optional-semicolons \
+	dart ../../code/dart_style_strict_semi/bin/format.dart --optional-semicolons \
 			-o parse-original original
 
 # "stripped" -> "parse-stripped"
@@ -83,7 +83,7 @@ parse-original:
 # semicolon causes the code to be parsed differently.
 parse-stripped:
 	rm -rf parse-stripped
-	dart ../../code/dart_style_semicolon/bin/format.dart --optional-semicolons \
+	dart ../../code/dart_style_strict_semi/bin/format.dart --optional-semicolons \
 			-o parse-stripped stripped
 
 .PHONY: baseline parse-baseline parse-original parse-stripped remove_stuff stripped

@@ -354,6 +354,9 @@ class DartFormatter {
     // approach.
     TokenType.AMPERSAND_AMPERSAND,
     TokenType.BAR_BAR,
+
+    // Treat "Function" like a reserved word and ignore newlines before it.
+    Keyword.FUNCTION,
   ].toSet();
 
   void _insertSemicolons(LineInfo lineInfo, Token startToken) {

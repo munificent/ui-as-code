@@ -808,7 +808,6 @@ class Parser {
     var token = _ignoreImplicitSemicolonNext(importKeyword);
     token = ensureLiteralString(token);
     Token uri = token;
-    // TODO(semicolon): Do we need to explicitly ignore a newline before "if"?
     token = parseConditionalUriStar(token);
     token = parseImportPrefixOpt(token);
     token = parseCombinatorStar(token).next;
@@ -928,11 +927,19 @@ class Parser {
   /// ;
   /// ```
   Token parseConditionalUriStar(Token token) {
+    // DONE(semicolon): Ignore newline before "if".
+    token = _ignoreImplicitSemicolonNext(token);
+
     listener.beginConditionalUris(token.next);
     int count = 0;
     while (optional('if', token.next)) {
       count++;
       token = parseConditionalUri(token);
+
+      if (token.next.type == TokenType.SEMICOLON_IMPLICIT &&
+          optional('if', token.next.next)) {
+        token = token.next;
+      }
     }
     listener.endConditionalUris(count);
     return token;
@@ -2464,6 +2471,7 @@ class Parser {
 
     // DONE(semicolon): Ignore a newline between the type and name.
     token = _ignoreImplicitSemicolonNext(token);
+    name = _ignoreImplicitSemicolon(name);
 
     assert(token.next == name);
 
@@ -3564,9 +3572,12 @@ class Parser {
   Token parseFunctionBody(
       Token token, bool ofFunctionExpression, bool allowAbstract) {
     Token next = token.next;
-    if (optional('native', next)) {
-      Token nativeToken = next;
-      token = parseNativeClause(token);
+
+    // DONE(semicolon): Allow newline before "native".
+    var ignoreSemicolon = _ignoreImplicitSemicolonNext(token);
+    if (optional('native', ignoreSemicolon.next)) {
+      Token nativeToken = ignoreSemicolon.next;
+      token = parseNativeClause(ignoreSemicolon);
       next = token.next;
 
       var semicolon = _optionalSemicolon(next);
@@ -5364,6 +5375,13 @@ class Parser {
       bool onlyParseVariableDeclarationStart = false]) {
     typeInfo ??= computeType(beforeType, false);
     Token token = typeInfo.skipType(beforeType);
+
+    // DONE(semicolon): If the type is a function type, ignore a newline after
+    // it.
+    if (token.type == TokenType.CLOSE_PAREN) {
+      token = _ignoreImplicitSemicolonNext(token);
+    }
+
     Token next = token.next;
 
     if (!onlyParseVariableDeclarationStart) {
@@ -5381,6 +5399,13 @@ class Parser {
             computeTypeParamOrArg(next).parseVariables(next, this);
         listener.beginLocalFunctionDeclaration(start.next);
         token = typeInfo.parseType(beforeType, this);
+
+        // DONE(semicolon): If the type is a function type, ignore a newline after
+        // it.
+        if (token.type == TokenType.CLOSE_PAREN) {
+          token = _ignoreImplicitSemicolonNext(token);
+        }
+
         next = token.next;
         return parseNamedFunctionRest(token, start.next, beforeFormals, false);
       }

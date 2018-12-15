@@ -206,3 +206,11 @@ main() {}
 part of foo.bar;
 
 main() {}
+>>>
+import 'foo.dart'
+    if (io) 'bar.dart'
+    if (io) 'bar.dart'
+<<<
+import 'foo.dart'
+    if (io) 'bar.dart'
+    if (io) 'bar.dart';
