@@ -928,7 +928,10 @@ class Parser {
   /// ```
   Token parseConditionalUriStar(Token token) {
     // DONE(semicolon): Ignore newline before "if".
-    token = _ignoreImplicitSemicolonNext(token);
+    if (token.next.type == TokenType.SEMICOLON_IMPLICIT &&
+        token.next.next.type == Keyword.IF) {
+      token = token.next;
+    }
 
     listener.beginConditionalUris(token.next);
     int count = 0;

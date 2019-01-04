@@ -192,7 +192,17 @@ class DartFormatter {
     TokenType.EQ_EQ,
     TokenType.EQ_EQ_EQ,
     TokenType.FUNCTION,
-    TokenType.GT,
+    // DONE(semicolon): Can't ignore newline after this because of:
+    //
+    //     var a = Foo is Bar<int>
+    //
+    // And:
+    //
+    //     class Foo {
+    //       factory Foo() = Bar<int>
+    //     }
+    // TODO(semicolon): Ignore this in grammar.
+//    TokenType.GT,
     TokenType.GT_EQ,
     TokenType.GT_GT,
     TokenType.GT_GT_EQ,
@@ -214,9 +224,9 @@ class DartFormatter {
     TokenType.PERIOD_PERIOD_PERIOD,
     TokenType.PLUS,
     TokenType.PLUS_EQ,
-    // TODO(semicolon): Fine to ignore now because it's only used by the
-    // conditional operator. But if we ever want to make a postfix "?"
-    // expression, this could be a problem.
+    // TODO(semicolon): We can't ignore a newline after "?" because of NNBD:
+    //
+    //     var b = o is Foo?
     TokenType.QUESTION,
     TokenType.QUESTION_PERIOD,
     TokenType.QUESTION_QUESTION,
@@ -356,7 +366,12 @@ class DartFormatter {
     TokenType.BAR_BAR,
 
     // Treat "Function" like a reserved word and ignore newlines before it.
-    Keyword.FUNCTION,
+    // DONE(semicolon): Can't do this because it can appear at the beginning
+    // of a member declaration:
+    //
+    //     var before = value
+    //     Function() returnsFunction() { ... }
+//    Keyword.FUNCTION,
   ].toSet();
 
   void _insertSemicolons(LineInfo lineInfo, Token startToken) {
