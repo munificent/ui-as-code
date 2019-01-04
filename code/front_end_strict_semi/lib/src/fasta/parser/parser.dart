@@ -4016,6 +4016,10 @@ class Parser {
       Token token, int precedence, bool allowCascades) {
     assert(precedence >= 1);
     assert(precedence <= SELECTOR_PRECEDENCE);
+
+    // DONE(semicolon): Ignore a newline after an infix ">" operator.
+    if (optional('>', token)) token = _ignoreImplicitSemicolonNext(token);
+
     token = parseUnaryExpression(token, allowCascades);
     TypeParamOrArgInfo typeArg = computeMethodTypeArguments(token);
     if (typeArg != noTypeParamOrArg) {

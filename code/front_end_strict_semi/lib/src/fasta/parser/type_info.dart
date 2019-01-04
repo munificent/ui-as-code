@@ -195,6 +195,10 @@ TypeInfo computeType(final Token token, bool required,
     if (typeParamOrArg.isSimpleTypeArgument) {
       // We've seen identifier `<` identifier `>`
       next = typeParamOrArg.skip(next).next;
+
+      // DONE(semicolon): Ignore newline after type.
+      if (next.type == TokenType.SEMICOLON_IMPLICIT) next = next.next;
+
       if (!isGeneralizedFunctionType(next)) {
         if (required || looksLikeName(next)) {
           // identifier `<` identifier `>` identifier

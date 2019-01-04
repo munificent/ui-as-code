@@ -379,7 +379,13 @@ class ComplexTypeInfo implements TypeInfo {
     int endGroupIndex = typeVariableEndGroups.length - 1;
     for (Link<Token> t = typeVariableStarters; t.isNotEmpty; t = t.tail) {
       token = token.next;
-      assert(optional('Function', token));
+      // DONE(semicolon): Ignore newline before "Function".
+      assert(optional('Function', token) ||
+          token.type == TokenType.SEMICOLON_IMPLICIT &&
+              optional('Function', token.next));
+
+      if (token.type == TokenType.SEMICOLON_IMPLICIT) token = token.next;
+
       Token functionToken = token;
       if (optional("<", token.next)) {
         // Skip type parameters, they were parsed above.
@@ -441,9 +447,15 @@ class ComplexTypeInfo implements TypeInfo {
   /// and return the receiver or one of the [TypeInfo] constants.
   TypeInfo computeIdentifierGFT(bool required) {
     assert(isValidTypeReference(start));
-    assert(optional('Function', start.next));
+    // DONE(semicolon): Ignore newline before "Function".
+    assert(optional('Function', start.next) ||
+        start.next.type == TokenType.SEMICOLON_IMPLICIT &&
+            optional('Function', start.next.next));
 
-    computeRest(start.next, required);
+    var token = start.next;
+    if (token.type == TokenType.SEMICOLON_IMPLICIT) token = token.next;
+
+    computeRest(token, required);
     if (gftHasReturnType == null) {
       return simpleType;
     }
@@ -471,6 +483,9 @@ class ComplexTypeInfo implements TypeInfo {
 
     end = typeArguments.skip(start);
     computeRest(end.next, required);
+
+    // DONE(semicolon): Ignore a newline between a type argument list and name.
+    if (end.next.type == TokenType.SEMICOLON_IMPLICIT) end = end.next;
 
     if (!required && !looksLikeName(end.next) && gftHasReturnType == null) {
       return noType;
@@ -503,7 +518,10 @@ class ComplexTypeInfo implements TypeInfo {
   }
 
   void computeRest(Token token, bool required) {
-    while (optional('Function', token)) {
+    while (optional('Function', token) ||
+        token.type == TokenType.SEMICOLON_IMPLICIT && optional('Function', token.next)) {
+      if (token.type == TokenType.SEMICOLON_IMPLICIT) token = token.next;
+
       Token typeVariableStart = token;
       // TODO(danrubel): Consider caching TypeParamOrArgInfo
       token = computeTypeParamOrArg(token, true).skip(token);
