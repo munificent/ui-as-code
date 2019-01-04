@@ -171,7 +171,12 @@ TypeInfo computeType(final Token token, bool required,
 
   if (optional('void', next)) {
     next = next.next;
-    // TODO(semicolon): Ignore newline before "Function" here? (And below.)
+
+    // DONE(semicolon): Ignore a newline between "void" and "Function".
+    if (next.type == TokenType.SEMICOLON_IMPLICIT && optional('Function', next.next)) {
+      next = next.next;
+    }
+
     if (isGeneralizedFunctionType(next)) {
       // `void` `Function` ...
       return new ComplexTypeInfo(token, noTypeParamOrArg)

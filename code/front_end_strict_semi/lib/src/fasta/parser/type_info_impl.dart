@@ -433,7 +433,8 @@ class ComplexTypeInfo implements TypeInfo {
   /// and return the receiver or one of the [TypeInfo] constants.
   TypeInfo computeVoidGFT(bool required) {
     assert(optional('void', start));
-    assert(optional('Function', start.next));
+    assert(optional('Function', start.next)
+        || start.next.type == TokenType.SEMICOLON_IMPLICIT && optional('Function', start.next.next));
 
     computeRest(start.next, required);
     if (gftHasReturnType == null) {
@@ -510,7 +511,11 @@ class ComplexTypeInfo implements TypeInfo {
 
     end = typeArguments.skip(token);
     computeRest(end.next, required);
-    if (!required && !looksLikeName(end.next) && gftHasReturnType == null) {
+    if (!required &&
+        !looksLikeName(end.next) &&
+        // DONE(semicolon): Ignore newline between type and name.
+        !(end.next.type == TokenType.SEMICOLON_IMPLICIT && looksLikeName(end.next.next)) &&
+        gftHasReturnType == null) {
       return noType;
     }
     assert(end != null);
