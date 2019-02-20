@@ -23,14 +23,24 @@ remove_stuff:
 	rm -rf original/sdk/third_party/pkg_tested
 	rm -rf original/packages/front_end-0.1.6/testcases
 
-# "original" -> "stripped"
+# "original" -> "strip-original"
 #
 # Runs a little script that mechanically removes semicolons from the corpus but
 # doesn't make any other formatting changes. The resulting code is a corpus
 # that looks like what a Dart user would write in an optional semicolon world.
-stripped:
-	rm -rf stripped
-	dart ../../scripts/bin/strip_semicolons.dart original stripped
+strip-original:
+	rm -rf strip-original
+	dart ../../scripts/bin/strip_semicolons.dart original strip-original
+
+# "original" -> "strip-baseline"
+#
+# Runs a little script that mechanically removes semicolons from the
+# baseline-formatted corpus. The resulting code is a corpus
+# that looks like what a Dart user would migrate their code to in an optional
+# semicolon world.
+strip-baseline:
+	rm -rf strip-original
+	dart ../../scripts/bin/strip_semicolons.dart baseline strip-baseline
 
 # "original" -> "baseline"
 #
@@ -74,16 +84,31 @@ parse-original:
 	dart ../../code/dart_style_strict_semi/bin/format.dart --optional-semicolons \
 			-o parse-original original
 
-# "stripped" -> "parse-stripped"
+# "strip-original" -> "parse-strip-original"
 #
-# Runs dartfmt on "stripped" using the prototype optional semicolon parser. This
-# shows how new Dart code without semicolons is viewed by the new grammar.
+# Runs dartfmt on "strip-original" using the prototype optional semicolon
+# parser. This shows how new Dart code without semicolons is viewed by the new
+# grammar.
 #
 # Differences between this and "parse-original" show places where removing a
 # semicolon causes the code to be parsed differently.
-parse-stripped:
-	rm -rf parse-stripped
+parse-strip-original:
+	rm -rf parse-strip-original
 	dart ../../code/dart_style_strict_semi/bin/format.dart --optional-semicolons \
-			-o parse-stripped stripped
+			-o parse-strip-original strip-original
 
-.PHONY: baseline parse-baseline parse-original parse-stripped remove_stuff stripped
+# "strip-baseline" -> "parse-strip-baseline"
+#
+# Runs dartfmt on "strip-baseline" using the prototype optional semicolon
+# parser. This shows how new Dart code without semicolons is viewed by the new
+# grammar.
+#
+# Differences between this and "parse-baseline" show places where removing a
+# semicolon causes the code to be parsed differently.
+parse-strip-baseline:
+	rm -rf parse-strip-baseline
+	dart ../../code/dart_style_strict_semi/bin/format.dart --optional-semicolons \
+			-o parse-strip-baseline strip-baseline
+
+.PHONY: baseline parse-baseline parse-original parse-strip-baseline \
+	parse-strip-original remove_stuff strip-baseline strip-original

@@ -8,5 +8,7 @@ data/optional-semicolons/baseline
 data/optional-semicolons/original
 data/optional-semicolons/parse-baseline
 data/optional-semicolons/parse-original
+data/optional-semicolons/parse-strip-baseline
 data/optional-semicolons/parse-stripped
+data/optional-semicolons/strip-baseline
 data/optional-semicolons/stripped

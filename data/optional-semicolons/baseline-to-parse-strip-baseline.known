@@ -1,0 +1,11 @@
+// Hanging return with comment after "return".
+// (Other hanging returns are already fixed because this is parsing the
+// baseline, not original output.)
+-packages/angular_components-0.10.0/lib/src/utils/angular/scroll_host/sticky_controller_impl.dart
+
+// Dartfmt changes output on reformatting. Something to do with a block comment
+// in a parameter list.
++flutter/packages/flutter/test/material/dropdown_test.dart
++packages/dson_core-0.15.2/lib/src/deserializer.dart
++packages/over_react-1.27.0/lib/src/util/dom_util.dart
++packages/serializable_core-0.11.1/lib/serializable.dart

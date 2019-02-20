@@ -259,7 +259,10 @@ TypeInfo computeType(final Token token, bool required,
   }
 
   // DONE(semicolon): Ignore a newline between a type and name.
-  if (next.type == TokenType.SEMICOLON_IMPLICIT) next = next.next;
+  if (!optional('var', token) &&
+      next.type == TokenType.SEMICOLON_IMPLICIT) {
+    next = next.next;
+  }
 
   assert(typeParamOrArg == noTypeParamOrArg);
   if (isGeneralizedFunctionType(next)) {

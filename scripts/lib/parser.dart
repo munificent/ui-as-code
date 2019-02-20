@@ -39,6 +39,7 @@ void forEachDartFile(String path,
   var lastDir = "";
 
   for (var entry in new Directory(path).listSync(recursive: true)) {
+    if (entry is! File) continue;
     if (!entry.path.endsWith(".dart")) continue;
 
     // For unknown reasons, some READMEs have a ".dart" extension. They aren't
@@ -107,8 +108,12 @@ void _parseFile(
   var visitor = createVisitor(shortPath);
   visitor.bind(source, new LineInfo(scanner.lineStarts));
 
-  var node = parser.parseCompilationUnit(startToken);
-  node.accept(visitor);
+  try {
+    var node = parser.parseCompilationUnit(startToken);
+    node.accept(visitor);
+  } catch (error) {
+    print("Got exception parsing $shortPath");
+  }
 }
 
 /// A simple [AnalysisErrorListener] that just collects the reported errors.
@@ -118,6 +123,6 @@ class ErrorListener implements AnalysisErrorListener {
 
   void onError(AnalysisError error) {
     _hadError = true;
-    print(error);
+//    print(error);
   }
 }
