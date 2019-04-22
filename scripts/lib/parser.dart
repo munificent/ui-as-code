@@ -115,7 +115,13 @@ void _parseFile(
   var visitor = createVisitor(shortPath);
   visitor.bind(source, new LineInfo(scanner.lineStarts));
 
-  var node = parser.parseCompilationUnit(startToken);
+  AstNode node;
+  try {
+    node = parser.parseCompilationUnit(startToken);
+  } catch (error) {
+    print("Got exception parsing $shortPath:\n$error");
+  }
+
   node.accept(visitor);
 }
 
