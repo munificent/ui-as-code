@@ -162,6 +162,18 @@ class NullVisitor extends Visitor {
     }
 
     if (parent is BinaryExpression &&
+        parent.operator.type == TokenType.EQ_EQ) {
+      record("Compare to other expression 'foo?.bar() == bang'");
+      return;
+    }
+
+    if (parent is BinaryExpression &&
+        parent.operator.type == TokenType.BANG_EQ) {
+      record("Compare to other expression 'foo?.bar() != bang'");
+      return;
+    }
+
+    if (parent is BinaryExpression &&
         parent.operator.type == TokenType.QUESTION_QUESTION &&
         parent.leftOperand == node) {
       record("Coalesce 'foo?.bar() ?? baz'");
@@ -279,7 +291,7 @@ class NullVisitor extends Visitor {
       context = "if";
     } else if (parent is BinaryExpression && parent.operator.type == TokenType.AMPERSAND_AMPERSAND) {
       context = "&&";
-    } else if (parent is BinaryExpression && parent.operator.type == TokenType.AMPERSAND_AMPERSAND) {
+    } else if (parent is BinaryExpression && parent.operator.type == TokenType.BAR_BAR) {
       context = "||";
     } else if (parent is WhileStatement && node == parent.condition) {
       context = "while";
